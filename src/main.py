@@ -22,6 +22,8 @@ logger = logging.getLogger(__name__)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Sends a welcome message when the /start command is issued."""
     logger.info("Call the 'start' handler")
+    user_id = update.effective_chat.id
+    logger.info(f"User {user_id} started bot")
     await update.message.reply_text(
         "Hello! I am your LLM agent MCP bot. Send me a message!"
     )
@@ -30,7 +32,20 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Echoes the user's message."""
     logger.info("Call the 'echo' handler")
+
+    user_id = update.effective_chat.id
+    logger.info(f"User {user_id} started bot")
     await update.message.reply_text(update.message.text)
+
+
+
+async def set_invite_token(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_id = update.effective_chat.id
+
+    try:
+        token = str(context.args[0])
+    except:
+        pass
 
 
 def main():
