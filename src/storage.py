@@ -9,6 +9,26 @@ import src.envs as envs
 logger = logging.getLogger(__name__)
 
 
+class Session:
+
+    def __init__(self, engine):
+        Storage.Base.metadata.create_all(engine)
+
+        Session = sessionmaker(bind=engine)
+        self._session = Session()
+
+    def __enter__(self):
+        return self._session
+
+    def __exit__(self, *args, **kwargs):
+        try:
+            self._session.commit()
+        except IntegrityError:
+            self._session.rollback()
+        finally:
+            self._session.close()
+
+
 class Storage:
     _instance = None
 
@@ -33,17 +53,7 @@ class Storage:
         else:
             raise ValueError("The `STORAGE_DB` env variable is not correct")
 
-        self._engine = create_engine(endpoint)
-        self._session = None
+        self._engine = create_engine(endpoint, echo=True)
 
-    @property
-    def session(self):
-        """Build a session on-demand"""
-        if self._session is None:
-            logger.info("Session has not been created, create it")
-            Storage.Base.metadata.create_all(self._engine)
-
-            Session = sessionmaker(bind=self._engine)
-            self._session = Session()
-
-        return self._session
+    def make_session(self) -> Session:
+        return Session(self._engine)
