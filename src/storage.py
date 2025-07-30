@@ -44,16 +44,18 @@ class Storage:
 
         if envs.STORAGE_DB == "mysql":
             endpoint = "sqlite:///:memory:"
-            logger.warning(
-                "The `mysql` is used as storage db! Use it ONLY for development"
-            )
+
+            if not envs.DEBUG_MODE:
+                logger.warning(
+                    "The `mysql` is used as storage db! Use it ONLY for development"
+                )
         elif envs.STORAGE_DB == "postgres":
             endpoint = f"postgresql+psycopg2://{envs.PG_USER}:{envs.PG_PASSWORD}@{envs.PG_HOST}:{envs.PG_PORT}/telegram_bot"
             logger.info("The `postgres` is used as storage db")
         else:
             raise ValueError("The `STORAGE_DB` env variable is not correct")
 
-        self._engine = create_engine(endpoint, echo=True)
+        self._engine = create_engine(endpoint, echo=envs.DEBUG_MODE)
 
     def make_session(self) -> Session:
         return Session(self._engine)

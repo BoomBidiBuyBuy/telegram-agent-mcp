@@ -1,6 +1,7 @@
 import pytest
 
 import src.storage as storage
+import src.envs as envs
 
 
 def test_singletone_traits(mocker):
@@ -30,7 +31,7 @@ def test_storage_endpoint(mocker, storage_kind, expected_url):
 
     storage.Storage()
 
-    storage.create_engine.assert_called_once_with(expected_url, echo=True)
+    storage.create_engine.assert_called_once_with(expected_url, echo=envs.DEBUG_MODE)
 
 
 def test_session(mocker):

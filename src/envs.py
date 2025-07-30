@@ -9,3 +9,5 @@ PG_USER = os.environ.get("PG_USER")
 PG_PASSWORD = os.environ.get("PG_PASSWORD")
 PG_HOST = os.environ.get("PG_HOST")
 PG_PORT = os.environ.get("PG_PORT")
+
+DEBUG_MODE = bool(int(os.environ.get("DEBUG_MODE", 0)))

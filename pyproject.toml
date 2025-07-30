@@ -14,6 +14,7 @@ dependencies = [
 [tool.uv]
 dev-dependencies = [
     "pytest>=8.4.1",
+    "pytest-env>=1.1.5",
     "pytest-mock>=3.14.1",
     "ruff>=0.12.7",
 ]
