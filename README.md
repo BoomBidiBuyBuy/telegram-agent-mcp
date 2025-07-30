@@ -9,6 +9,10 @@ This repo implements proxy server that allows to access LLM Agent integrated wit
 
 Setup `.env` file from the `.env.example`
 
+You can use `mysql` for the `STORAGE_DB`.
+
+> [!IMPORTANT]
+> Use `mysql` only for development since it keeps all data in memory  
 
 ### Setup
 
