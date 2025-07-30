@@ -38,16 +38,6 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(update.message.text)
 
 
-
-async def set_invite_token(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user_id = update.effective_chat.id
-
-    try:
-        token = str(context.args[0])
-    except:
-        pass
-
-
 def main():
     """Starts the bot."""
     application = Application.builder().token(envs.TELEGRAM_BOT_TOKEN).build()
