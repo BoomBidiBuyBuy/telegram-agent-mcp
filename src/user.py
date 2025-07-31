@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, Table, Index
 from sqlalchemy.orm import relationship 
 
 import src.storage as storage
@@ -10,7 +10,7 @@ Base = storage.Storage.Base
 class User(Base):
     __tablename__ = "user"
 
-    telegram_id = Column(
+    id = Column(
         String,
         primary_key=True,
         index=True,
@@ -29,14 +29,24 @@ class User(Base):
     )
 
 
+token_action = Table(
+    "token_action",
+    Base.metadata,
+    Column("token_hash", String, ForeignKey("token.id"), primary_key=True),
+    Column("action_name", String, ForeignKey("action.name"), primary_key=True),
+    Index("ix_token_action_token", "token_hash"),
+    Index("ix_token_action_action", "action_name")
+)
+
+
 class Token(Base):
     __tablename__ = "token"
 
-    token = Column(String, primary_key=True, index=True, unique=True)
+    id = Column(String, primary_key=True, index=True, unique=True)
 
     user_id = Column(
         Integer,
-        ForeignKey("user.telegram_id"),
+        ForeignKey("user.id"),
         nullable=False,
         index=True
     )
@@ -48,28 +58,20 @@ class Token(Base):
 
     actions = relationship(
         "Action",
+        secondary=token_action,
         back_populates="tokens",
-        cascade="all, delete-orphan"
     )
 
 
 class Action(Base):
     __tablename__ = "action"
 
-    id = Column(Integer, primary_key=True)
-
-    token_id = Column(
-        String,
-        ForeignKey("token.token"),
-        nullable=False,
-        index=True
-    )
-
-    name = Column(String)
+    name = Column(String, primary_key=True)
 
     description = Column(String)
 
     tokens = relationship(
         "Token",
+        secondary=token_action,
         back_populates="actions"
     )

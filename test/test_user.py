@@ -3,7 +3,7 @@ import pytest
 from sqlalchemy import select
 
 from src.storage import Storage
-from src.user import User, Token
+from src.user import User, Token, Action
 
 
 @pytest.fixture
@@ -14,42 +14,116 @@ def storage():
 @pytest.fixture
 def session(storage):
     with storage.make_session() as session:
-        yield session;
+        yield session
 
 
 def test_user(session):
-    user1 = User(telegram_id="tgabcd", name="Alice")
-    user2 = User(telegram_id="tg1234", name="Bob")
+    user1 = User(id="tgabcd", name="Alice")
+    user2 = User(id="tg1234", name="Bob")
     session.add_all([user1, user2])
+    session.commit()
 
-    assert session.query(
-        select(User).filter_by(telegram_id="tgabcd").exists()
-    ).scalar()
+    assert session.query(select(User).filter_by(id="tgabcd").exists()).scalar()
 
-    assert not session.query(
-        select(User).filter_by(telegram_id="tgxxxx").exists()
-    ).scalar()
+    assert not session.query(select(User).filter_by(id="tgxxxx").exists()).scalar()
 
-    assert session.query(
-        select(User).filter_by(name="Bob").exists()
-    ).scalar()
+    assert session.query(select(User).filter_by(name="Bob").exists()).scalar()
 
 
 def test_token(session):
-    user1 = User(telegram_id="tgabcd", name="Alice")
-    user2 = User(telegram_id="tg1234", name="Bob")
+    user1 = User(id="tgabcd", name="Alice")
+    user2 = User(id="tg1234", name="Bob")
 
-    token1 = Token(token="token123", user=user1)
-    token2 = Token(token="token345", user=user1)
-    token3 = Token(token="token567", user=user2)
+    Token(id="token123", user=user1)
+    Token(id="token345", user=user1)
+    Token(id="token567", user=user2)
 
     session.add_all([user1, user2])
+    session.commit()
 
     alice = session.query(User).filter_by(name="Alice").one_or_none()
     bob = session.query(User).filter_by(name="Bob").one_or_none()
 
-    alice_tokens = { token.token for token in alice.tokens }
-    bob_tokens = { token.token for token in bob.tokens }
+    alice_tokens = {token.id for token in alice.tokens}
+    bob_tokens = {token.id for token in bob.tokens}
 
     assert {"token123", "token345"} == alice_tokens
     assert {"token567"} == bob_tokens
+
+
+def test_action(session):
+    user1 = User(id="tgabcd", name="Alice")
+    user2 = User(id="tg1234", name="Bob")
+
+    token1 = Token(id="token123", user=user1)
+    token2 = Token(id="token345", user=user1)
+    token3 = Token(id="token567", user=user2)
+
+    action_pg_read = Action(name="postgres_read", description="Postgres read access")
+    action_pg_write = Action(name="postgres_write", description="Postgres write access")
+    action_airflow_read = Action(name="airflow_read", description="Airflow read")
+
+    token1.actions.extend([action_pg_read, action_pg_write])
+    token2.actions.append(action_airflow_read)
+    token3.actions.append(action_pg_read)
+
+    session.add_all([user1, user2])
+    session.commit()
+
+    # whether user has action
+    stmt = (
+        select(Token)
+        .join(Token.user)
+        .join(Token.actions)
+        .where(User.id == "tg1234", Action.name == "airflow_read")
+        .limit(1)
+    )
+
+    assert session.execute(stmt).scalar_one_or_none() is None
+
+    ####################
+    # Add action for Bob
+    ####################
+    token = (
+        session.query(Token).filter_by(user_id="tg1234", id="token567").one_or_none()
+    )
+    token.actions.append(action_airflow_read)
+    session.commit()
+
+    assert session.execute(stmt).scalar_one_or_none() is not None
+
+    ################
+    # Remove action
+    ################
+    action = session.query(Action).filter_by(name="airflow_read").one_or_none()
+    token.actions.remove(action)
+    session.commit()
+
+    assert session.execute(stmt).scalar_one_or_none() is None
+
+    ################
+    # Revoke token
+    ################
+    stmt = (
+        select(Action)
+        .join(Token.actions)
+        .join(Token.user)
+        .where(Token.user_id == "tgabcd")
+        .distinct()
+    )
+
+    actions = session.execute(stmt).scalars().all()
+
+    # check initial state
+    assert {"postgres_read", "postgres_write", "airflow_read"} == {
+        action.name for action in actions
+    }
+
+    token = session.query(Token).filter_by(id="token123").one_or_none()
+    session.delete(token)
+    session.commit()
+
+    actions = session.execute(stmt).scalars().all()
+
+    # check after removal state
+    assert {"airflow_read"} == {action.name for action in actions}

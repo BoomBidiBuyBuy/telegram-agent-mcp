@@ -38,4 +38,4 @@ def test_session(mocker):
     instance = storage.Storage()
 
     with instance.make_session():
-        pass 
+        pass
