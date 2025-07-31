@@ -19,16 +19,21 @@ def session(storage):
 
 def test_user(session):
     """ Check that the User table functioning without errors """
-    user1 = User(id="tgabcd", name="Alice")
-    user2 = User(id="tg1234", name="Bob")
-    session.add_all([user1, user2])
+
+    User.create("tgabcd", "Alice", session)
+    User.create("tg1234", "Bob", session)
     session.commit()
 
-    assert session.query(select(User).filter_by(id="tgabcd").exists()).scalar()
+    users = User.find_by_id("tgabcd", session)
+    assert len(users) == 1
+    assert users[0].name == "Alice"
 
-    assert not session.query(select(User).filter_by(id="tgxxxx").exists()).scalar()
+    users = User.find_by_id("tgxxxx", session)
+    assert len(users) == 0
 
-    assert session.query(select(User).filter_by(name="Bob").exists()).scalar()
+
+    assert User.exists("tg1234", session)
+    assert not User.exists("tg5678", session)
 
 
 def test_token(session):

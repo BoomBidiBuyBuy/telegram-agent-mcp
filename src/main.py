@@ -38,12 +38,22 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(update.message.text)
 
 
+async def token_command(update: Update, context: ContextType.DEFAULT_TYPE) -> None:
+    """ Provide ability to set a welcome token for users """
+    if context.args:
+        user_id = update.effective_chat.id
+        username = update.message.from_user.username
+    else:
+        update.message.reply_text("No parameters passed to the command, however expected one")
+
+
 def main():
     """Starts the bot."""
     application = Application.builder().token(envs.TELEGRAM_BOT_TOKEN).build()
 
     # Add handlers
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("token", token_command, pass_args=True))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
 
     # Run the bot
