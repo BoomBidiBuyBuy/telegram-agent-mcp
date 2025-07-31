@@ -8,6 +8,10 @@ Base = storage.Storage.Base
 
 
 class User(Base):
+    """ Defines the `User` table.
+   
+    An user can have multiple tokens
+    """
     __tablename__ = "user"
 
     id = Column(
@@ -29,6 +33,9 @@ class User(Base):
     )
 
 
+# Association between token and actions
+# Without it we would need to create the same actions per different tokens
+# because removing tokens would be removing corresponding action.
 token_action = Table(
     "token_action",
     Base.metadata,
@@ -40,6 +47,14 @@ token_action = Table(
 
 
 class Token(Base):
+    """ Defines the `Token` table.
+    It contains access (welcome) tokens that we share with
+    our users to work with API.
+
+    Every token can have multiple actions.
+    They are bound using the `token_action` association.
+    """
+
     __tablename__ = "token"
 
     id = Column(String, primary_key=True, index=True, unique=True)
@@ -64,6 +79,10 @@ class Token(Base):
 
 
 class Action(Base):
+    """ Defines the `Action` table.
+    It contains action we is allowed an user can perform according to a token.
+    """
+
     __tablename__ = "action"
 
     name = Column(String, primary_key=True)

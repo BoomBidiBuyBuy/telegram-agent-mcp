@@ -18,6 +18,7 @@ def session(storage):
 
 
 def test_user(session):
+    """ Check that the User table functioning without errors """
     user1 = User(id="tgabcd", name="Alice")
     user2 = User(id="tg1234", name="Bob")
     session.add_all([user1, user2])
@@ -31,6 +32,7 @@ def test_user(session):
 
 
 def test_token(session):
+    """ Check that the Token table functioning without errors """
     user1 = User(id="tgabcd", name="Alice")
     user2 = User(id="tg1234", name="Bob")
 
@@ -52,6 +54,11 @@ def test_token(session):
 
 
 def test_action(session):
+    """ Checks that:
+    - actions can be added
+    - actions cen be removed
+    - token revokation also remove corresponding actions from users abilities
+    """
     user1 = User(id="tgabcd", name="Alice")
     user2 = User(id="tg1234", name="Bob")
 
@@ -104,6 +111,8 @@ def test_action(session):
     ################
     # Revoke token
     ################
+    
+    # check initial state
     stmt = (
         select(Action)
         .join(Token.actions)
@@ -114,16 +123,28 @@ def test_action(session):
 
     actions = session.execute(stmt).scalars().all()
 
-    # check initial state
     assert {"postgres_read", "postgres_write", "airflow_read"} == {
         action.name for action in actions
     }
 
+    # check after removal state
     token = session.query(Token).filter_by(id="token123").one_or_none()
     session.delete(token)
     session.commit()
 
     actions = session.execute(stmt).scalars().all()
 
-    # check after removal state
     assert {"airflow_read"} == {action.name for action in actions}
+
+    # check that Bob still able to tun 'postgres_read'
+    stmt = (
+        select(Action)
+        .join(Token.actions)
+        .join(Token.user)
+        .where(Token.user_id == "tg1234")
+        .distinct()
+    )
+
+    actions = session.execute(stmt).scalars().all()
+    
+    assert {"postgres_read"} == {action.name for action in actions}
