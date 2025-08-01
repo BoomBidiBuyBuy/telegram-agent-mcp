@@ -39,12 +39,14 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def token_command(update: Update, context: ContextType.DEFAULT_TYPE) -> None:
-    """ Provide ability to set a welcome token for users """
+    """Provide ability to set a welcome token for users"""
     if context.args:
         user_id = update.effective_chat.id
         username = update.message.from_user.username
     else:
-        update.message.reply_text("No parameters passed to the command, however expected one")
+        update.message.reply_text(
+            "No parameters passed to the command, however expected one"
+        )
 
 
 def main():

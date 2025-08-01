@@ -10,7 +10,6 @@ logger = logging.getLogger(__name__)
 
 
 class Session:
-
     def __init__(self, engine):
         Storage.Base.metadata.create_all(engine)
 
