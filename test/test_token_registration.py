@@ -13,12 +13,12 @@ from telegram.ext import ContextTypes
 def update(mocker):
     message = mocker.Mock(spec=telegram.Message)
     message.from_user = mocker.Mock(spec=telegram.User)
-    message.from_user.username = "Alice"
-    message.reply_text = mocker.Mock()
+    message.reply_text = mocker.AsyncMock()
 
     update = mocker.Mock(spec=telegram.Update)
     update.message = message
     update.effective_user = mocker.Mock()
+    update.effective_user.username = "Alice"
     update.effective_user.id = "tg1234"
     update.effective_chat = mocker.Mock(spec=telegram.Chat)
     return update
@@ -74,7 +74,7 @@ async def test_new_user(update, context, mocker):
 
     User.create.assert_called_once_with(
         update.effective_user.id,
-        update.message.from_user.username,
+        update.effective_user.username,
         ANY,  # it's session, we don't have access to check
     )
 

@@ -33,6 +33,7 @@ class User(Base):
         logger.info(f"Create a new user user_id={user_id}, name={username}")
         user = User(id=user_id, name=username)
         session.add(user)
+        session.commit()
         return user
 
     @staticmethod
@@ -41,16 +42,6 @@ class User(Base):
         Returns user or `None` because user id is index
         """
         return session.query(User).filter_by(id=user_id).one_or_none()
-
-    #    @staticmethod
-    #    def find_by_name(
-    #        name: str,
-    #        session: storage.Session
-    #    ) -> List['User']:
-    #        """ Finds users by name.
-    #        Returns list of users because name is not unique
-    #        """
-    #        return session.query(User).filter_by(name=name).all()
 
     @staticmethod
     def exists(user_id: str, session: storage.Session) -> bool:
@@ -113,6 +104,7 @@ class Token(Base):
         logger.info(f"Create a new token id='{id}'")
         token = Token(id=id)
         session.add(token)
+        session.commit()
         return token
 
     @staticmethod

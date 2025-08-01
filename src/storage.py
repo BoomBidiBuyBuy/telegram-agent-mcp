@@ -14,18 +14,18 @@ class Session:
         Storage.Base.metadata.create_all(engine)
 
         Session = sessionmaker(bind=engine)
-        self._session = Session()
+        self.session = Session()
 
     def __enter__(self):
-        return self._session
+        return self.session
 
     def __exit__(self, *args, **kwargs):
         try:
-            self._session.commit()
+            self.session.commit()
         except Exception:
-            self._session.rollback()
+            self.session.rollback()
         finally:
-            self._session.close()
+            self.session.close()
 
 
 class Storage:
