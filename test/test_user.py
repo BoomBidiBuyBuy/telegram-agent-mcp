@@ -2,8 +2,8 @@ import pytest
 
 from sqlalchemy import select
 
-from src.storage import Storage
-from src.user import User, Token, Action
+from storage import Storage
+from user import User, Token, Action
 
 
 @pytest.fixture
@@ -13,7 +13,7 @@ def storage():
 
 @pytest.fixture
 def session(storage):
-    with storage.make_session() as session:
+    with storage.build_session() as session:
         yield session
 
 

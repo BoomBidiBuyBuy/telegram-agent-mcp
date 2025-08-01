@@ -1,11 +1,11 @@
 import logging
 
-from typing import List, Union
+from typing import Union
 
 from sqlalchemy import Column, Integer, String, ForeignKey, Table, Index, select
 from sqlalchemy.orm import relationship
 
-import src.storage as storage
+import storage
 
 
 logger = logging.getLogger(__name__)
@@ -30,6 +30,7 @@ class User(Base):
 
     @staticmethod
     def create(user_id: str, username: str, session: storage.Session) -> "User":
+        logger.info(f"Create a new user user_id={user_id}, name={username}")
         user = User(id=user_id, name=username)
         session.add(user)
         return user
@@ -96,6 +97,7 @@ class Token(Base):
 
     id = Column(String, primary_key=True, index=True, unique=True)
 
+    # TODO: Do we really need it?
     user_id = Column(Integer, ForeignKey("user.id"), index=True)
 
     user = relationship("User", back_populates="tokens")
@@ -105,6 +107,13 @@ class Token(Base):
         secondary=token_action,
         back_populates="tokens",
     )
+
+    @staticmethod
+    def create(id: str, session: storage.Session) -> "User":
+        logger.info(f"Create a new token id='{id}'")
+        token = Token(id=id)
+        session.add(token)
+        return token
 
     @staticmethod
     def exists(token: str, session: storage.Session) -> bool:

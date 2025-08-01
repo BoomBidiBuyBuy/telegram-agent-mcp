@@ -1,7 +1,9 @@
 import pytest
 
-import src.storage as storage
-import src.envs as envs
+import storage
+import envs
+# import src.storage as storage
+# import src.envs as envs
 
 
 def test_singletone_traits(mocker):
@@ -21,13 +23,13 @@ def test_singletone_traits(mocker):
 )
 def test_storage_endpoint(mocker, storage_kind, expected_url):
     if storage_kind:
-        mocker.patch("src.envs.STORAGE_DB", storage_kind)
-    mocker.patch("src.envs.PG_USER", "user")
-    mocker.patch("src.envs.PG_PASSWORD", "password")
-    mocker.patch("src.envs.PG_HOST", "host")
-    mocker.patch("src.envs.PG_PORT", "port")
+        mocker.patch("envs.STORAGE_DB", storage_kind)
+    mocker.patch("envs.PG_USER", "user")
+    mocker.patch("envs.PG_PASSWORD", "password")
+    mocker.patch("envs.PG_HOST", "host")
+    mocker.patch("envs.PG_PORT", "port")
 
-    mocker.patch("src.storage.create_engine")
+    mocker.patch("storage.create_engine")
 
     storage.Storage()
 
@@ -37,5 +39,5 @@ def test_storage_endpoint(mocker, storage_kind, expected_url):
 def test_session(mocker):
     instance = storage.Storage()
 
-    with instance.make_session():
+    with instance.build_session():
         pass

@@ -3,7 +3,7 @@ import logging
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-import src.envs as envs
+import envs
 
 
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ class Session:
     def __exit__(self, *args, **kwargs):
         try:
             self._session.commit()
-        except IntegrityError:
+        except Exception:
             self._session.rollback()
         finally:
             self._session.close()
@@ -56,5 +56,5 @@ class Storage:
 
         self._engine = create_engine(endpoint, echo=envs.DEBUG_MODE)
 
-    def make_session(self) -> Session:
+    def build_session(self) -> Session:
         return Session(self._engine)
