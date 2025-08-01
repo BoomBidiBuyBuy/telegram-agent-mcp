@@ -18,26 +18,24 @@ def session(storage):
 
 
 def test_user(session):
-    """ Check that the User table functioning without errors """
+    """Check that the User table functioning without errors"""
 
     User.create("tgabcd", "Alice", session)
     User.create("tg1234", "Bob", session)
     session.commit()
 
-    users = User.find_by_id("tgabcd", session)
-    assert len(users) == 1
-    assert users[0].name == "Alice"
+    user = User.find_by_id("tgabcd", session)
+    assert user.name == "Alice"
 
-    users = User.find_by_id("tgxxxx", session)
-    assert len(users) == 0
-
+    user = User.find_by_id("tgxxxx", session)
+    assert user is None
 
     assert User.exists("tg1234", session)
     assert not User.exists("tg5678", session)
 
 
 def test_token(session):
-    """ Check that the Token table functioning without errors """
+    """Check that the Token table functioning without errors"""
     user1 = User(id="tgabcd", name="Alice")
     user2 = User(id="tg1234", name="Bob")
 
@@ -48,8 +46,8 @@ def test_token(session):
     session.add_all([user1, user2])
     session.commit()
 
-    alice = session.query(User).filter_by(name="Alice").one_or_none()
-    bob = session.query(User).filter_by(name="Bob").one_or_none()
+    alice = User.find_by_id("tgabcd", session)
+    bob = User.find_by_id("tg1234", session)
 
     alice_tokens = {token.id for token in alice.tokens}
     bob_tokens = {token.id for token in bob.tokens}
@@ -57,9 +55,46 @@ def test_token(session):
     assert {"token123", "token345"} == alice_tokens
     assert {"token567"} == bob_tokens
 
+    # revoke token
+    assert len(bob.tokens) == 1 and bob.tokens[0].id == "token567"
+
+    assert bob.revoke_token("token567", session)  # returns true in success
+    session.commit()
+
+    bob = User.find_by_id("tg1234", session)
+    assert len(bob.tokens) == 0
+
+    assert not bob.revoke_token("token567", session)  # already revoken
+
+
+def test_standalone_token(session):
+    """Check case creating tokens without users.
+    This case is important when we issue an token when we
+    do not know the user yet"""
+
+    # check that token not yet created
+    assert not Token.exists("token123", session)
+
+    # check token creation
+    token = Token(id="token123")
+
+    session.add_all([token])
+    session.commit()
+
+    assert Token.exists("token123", session)
+
+    # check assigning user to a token
+    token = Token.find_by_id("token123", session)
+    user = User(id="tg1234", name="Alice")
+
+    token.user = user
+    session.commit()
+
+    assert User.find_by_id("tg1234", session).tokens[0].id == "token123"
+
 
 def test_action(session):
-    """ Checks that:
+    """Checks that:
     - actions can be added
     - actions cen be removed
     - token revokation also remove corresponding actions from users abilities
@@ -116,7 +151,7 @@ def test_action(session):
     ################
     # Revoke token
     ################
-    
+
     # check initial state
     stmt = (
         select(Action)
@@ -133,8 +168,7 @@ def test_action(session):
     }
 
     # check after removal state
-    token = session.query(Token).filter_by(id="token123").one_or_none()
-    session.delete(token)
+    user1.revoke_token("token123", session)
     session.commit()
 
     actions = session.execute(stmt).scalars().all()
@@ -151,5 +185,5 @@ def test_action(session):
     )
 
     actions = session.execute(stmt).scalars().all()
-    
+
     assert {"postgres_read"} == {action.name for action in actions}
