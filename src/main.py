@@ -1,4 +1,5 @@
 import logging
+import uuid
 
 import envs
 from storage import Storage
@@ -108,7 +109,29 @@ def main():
     # application.add_handler(CommandHandler("add_token", add_token_command))
 
     # Run the bot
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    if envs.COMMUNICATION_MODE == "polling":
+        logger.info("Using polling mechanism to get new events")
+        application.run_polling(allowed_updates=Update.ALL_TYPES)
+    elif envs.COMMUNICATION_MODE == "webhook":
+        logger.info("Using webhook mechanism to get new events")
+
+        ext_params = dict()
+        if envs.SSL_KEY_PATH:
+            ext_params["key"] = envs.SSL_KEY_PATH
+        if envs.SSL_CERT_PATH:
+            ext_params["cert"] = envs.SSL_CERT_PATH
+
+        application.run_webhook(
+            listen="0.0.0.0",
+            secret_token=uuid.uuid4().hex,
+            port=envs.WEBHOOK_PORT,
+            webhook_url=envs.WEBHOOK_URL,
+            **ext_params,
+        )
+    else:
+        raise ValueError(
+            f"COMMUNICATION_MODE has unsupported value '{envs.COMMUNICATION_MODE}'"
+        )
 
 
 if __name__ == "__main__":
