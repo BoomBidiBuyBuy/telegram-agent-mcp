@@ -114,7 +114,7 @@ def main():
 #        key="private.key",
 #        cert="cert.pem",
         port=envs.WEBHOOK_PORT,
-        webhook_url=f"{envs.WEBHOOK_URL}:{envs.WEBHOOK_PORT}"
+        webhook_url=envs.WEBHOOK_URL
     )
 
 
