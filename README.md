@@ -27,6 +27,12 @@ uv sync --dev
 uv run --env-file .env src/main
 ```
 
+### Tests
+
+```
+uv run pytest -vs
+```
+
 ### Linters
 
 ```
