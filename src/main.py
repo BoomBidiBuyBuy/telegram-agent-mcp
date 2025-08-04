@@ -9,6 +9,8 @@ from telegram.ext import (
     Application,
     CommandHandler,
     ContextTypes,
+    MessageHandler,
+    filters,
 )
 
 
@@ -98,6 +100,22 @@ async def token_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         )
 
 
+async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle text messages from users."""
+    user_id = update.effective_user.id
+    username = update.effective_user.username
+    message_text = update.message.text
+    
+    logger.info(f"User {user_id} ({username}) sent text message: {message_text}")
+    
+    # Add logic to send message to LLM or perform other actions
+    
+    # Simple response for example
+    await update.message.reply_text(
+        f"You wrote: {message_text}\n\nThis is a free text processing!"
+    )
+
+
 def main():
     """Starts the bot."""
     application = Application.builder().token(envs.TELEGRAM_BOT_TOKEN).build()
@@ -106,6 +124,9 @@ def main():
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("token", token_command))
     # application.add_handler(CommandHandler("add_token", add_token_command))
+    
+    # Add text message handler
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_message))
 
     # Run the bot
     application.run_polling(allowed_updates=Update.ALL_TYPES)
