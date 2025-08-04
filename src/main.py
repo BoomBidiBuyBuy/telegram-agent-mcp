@@ -108,9 +108,13 @@ def main():
     # application.add_handler(CommandHandler("add_token", add_token_command))
 
     # Run the bot
-    # application.run_polling(allowed_updates=Update.ALL_TYPES)
+    #application.run_polling(allowed_updates=Update.ALL_TYPES)
     application.run_webhook(
-        listen="0.0.0.0", port=envs.WEBHOOK_PORT, webhook_url=envs.WEBHOOK_URL
+        listen="0.0.0.0",
+#        key="private.key",
+#        cert="cert.pem",
+        port=envs.WEBHOOK_PORT,
+        webhook_url=f"{envs.WEBHOOK_URL}:{envs.WEBHOOK_PORT}"
     )
 
 
