@@ -7,7 +7,9 @@ This repo implements proxy server that allows to access LLM Agent integrated wit
 
 ### Envs
 
-Setup `.env` file from the `.env.example`
+Create `.env` and copy content of the `.env.example` to `.env`.
+
+Fill all envs.
 
 You can use `mysql` for the `STORAGE_DB`.
 
@@ -24,7 +26,7 @@ uv sync --dev
 ### Run
 
 ```
-uv run --env-file .env src/main
+uv run --env-file .env src/main.py
 ```
 
 ### Linters
