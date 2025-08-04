@@ -113,7 +113,7 @@ def main():
         listen="0.0.0.0",
 #        key="private.key",
 #        cert="cert.pem",
-        port=envs.WEBHOOK_PORT,
+        port=envs.PORT,
         webhook_url=envs.WEBHOOK_URL
     )
 

@@ -12,5 +12,6 @@ PG_PORT = os.environ.get("PG_PORT")
 
 DEBUG_MODE = bool(int(os.environ.get("DEBUG_MODE", 0)))
 
-WEBHOOK_PORT = os.environ.get("WEBHOOK_PORT", os.environ.get("PORT"))
+PORT = os.environ.get("PORT")
+WEBHOOK_PORT = os.environ.get("WEBHOOK_PORT")
 WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
