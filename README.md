@@ -85,5 +85,6 @@ Heroku integrates only with the webhook mode.
 You need to setup only the following envs on Heroku site:
 - `COMMUNICATION_MODE=webhook`
 - `WEBHOOK_URL=https://<your-app-id>.herokuapp.com/` (note that port should not be in the url because Heroku communicates application through a proxy)
+- `TELEGRAM_BOT_TOKEN`
 
 No need to setup `WEBHOOK_PORT`, `SSL_KEY_PATH` and `SSL_CERT_PATH` because Heroku manages SSL on their proxy side. As for the port, they assigned it through the `PORT` env variable that we use instead of `WEBHOOK_PORT` to be integrated with their approach.
