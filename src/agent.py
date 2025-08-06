@@ -1,26 +1,25 @@
 import asyncio
-import json
 import os
 
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langgraph.graph import StateGraph, MessagesState, START
 from langchain_core.messages import AIMessage
 from langgraph.prebuilt import ToolNode, tools_condition
-from langgraph.checkpoint.memory import InMemorySaver
 
 from langchain_openai import ChatOpenAI
+from mcp_tools import ensure_mcp_server
 
-from mcp_app import load_mcp_servers
 
-
-def build_agent(custom_mcp_servers):
+async def build_agent():
     """
     Builds an OpenAI-based agent using the LangChain framework,
-    integrated with MCP servers listed in the `mcp-servers.json` file.
+    integrated with a simple FastMCP server for local development.
 
-    The agent uses an in-memory saver to retain the history
-    of the conversation during runtime.
+    The agent does not persist conversation history in memory.
     """
+    # Ensure MCP server is running
+    ensure_mcp_server()
+    
     llm = ChatOpenAI(
         temperature=0,
         streaming=False,
@@ -28,18 +27,21 @@ def build_agent(custom_mcp_servers):
         api_key=os.environ.get("OPENAI_API_KEY", None)
     )
 
-    mcp_servers = load_mcp_servers(custom_mcp_servers)
-
-    client = MultiServerMCPClient(mcp_servers)
+    # Create client to connect to our MCP server
+    client = MultiServerMCPClient({
+        "SimpleMCPServer": {
+            "transport": "sse",
+            "url": "http://localhost:8080/sse"
+        }
+    })
 
     # get tools
-    tools = asyncio.run(client.get_tools())
+    tools = await client.get_tools()
 
     def call_model(state: MessagesState):
         response = llm.bind_tools(tools).invoke(state["messages"])
         return {"messages": response}
 
-    checkpointer = InMemorySaver()
     builder = StateGraph(MessagesState)
     builder.add_node(call_model)
     builder.add_node(ToolNode(tools))
@@ -50,4 +52,4 @@ def build_agent(custom_mcp_servers):
     )
     builder.add_edge("tools", "call_model")
 
-    return builder.compile(checkpointer=checkpointer)
+    return builder.compile()

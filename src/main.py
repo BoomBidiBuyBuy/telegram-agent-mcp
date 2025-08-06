@@ -3,6 +3,7 @@ import logging
 import envs
 from storage import Storage
 from user import User, Token
+from agent import build_agent
 
 from telegram import Update
 from telegram.ext import (
@@ -100,20 +101,28 @@ async def token_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         )
 
 
-async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle text messages from users."""
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle incoming messages and process them with the agent."""
     user_id = update.effective_user.id
-    username = update.effective_user.username
     message_text = update.message.text
     
-    logger.info(f"User {user_id} ({username}) sent text message: {message_text}")
+    logger.info(f"User {user_id} sent message: {message_text}")
     
-    # Add logic to send message to LLM or perform other actions
-    
-    # Simple response for example
-    await update.message.reply_text(
-        f"You wrote: {message_text}\n\nThis is a free text processing!"
-    )
+    try:
+        # Build the agent
+        agent = await build_agent()
+        
+        # Process the message
+        result = await agent.ainvoke({"messages": [{"role": "user", "content": message_text}]})
+        
+        # Get the response
+        response = result["messages"][-1].content if result["messages"] else "Sorry, I couldn't process your message."
+        
+        await update.message.reply_text(response)
+        
+    except Exception as e:
+        logger.error(f"Error processing message: {e}")
+        await update.message.reply_text("Sorry, there was an error processing your message.")
 
 
 def main():
@@ -123,10 +132,8 @@ def main():
     # Add handlers
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("token", token_command))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     # application.add_handler(CommandHandler("add_token", add_token_command))
-    
-    # Add text message handler
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_message))
 
     # Run the bot
     application.run_polling(allowed_updates=Update.ALL_TYPES)

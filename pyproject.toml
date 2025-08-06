@@ -9,6 +9,11 @@ dependencies = [
     "pytest>=8.4.1",
     "python-telegram-bot>=22.3",
     "sqlalchemy>=2.0.42",
+    "langchain>=0.2.0",
+    "langchain-openai>=0.2.0",
+    "langchain-mcp-adapters>=0.1.0",
+    "langgraph>=0.2.0",
+    "fastmcp>=0.1.0",
 ]
 
 [tool.uv]
