@@ -10,7 +10,7 @@ This repository implements a proxy server that allows access to an LLM Agent int
 - 🛠️ **MCP Tools**: Custom tools for calculations, date/time, and more
 - 📱 **Telegram Bot**: Easy-to-use interface
 - 🔧 **Local Development**: Simple setup for debugging and testing
-- 🚀 **FastMCP Server**: Built-in MCP server with SSE transport
+- 🚀 **External MCP Server**: Connects to external MCP server
 
 ## Development
 
@@ -20,6 +20,7 @@ This repository implements a proxy server that allows access to an LLM Agent int
 - `uv` package manager
 - OpenAI API key
 - Telegram Bot Token
+- External MCP server
 
 ### Environment Setup
 
@@ -32,7 +33,7 @@ cp .env.example .env
 ```bash
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token
 OPENAI_API_KEY=your_openai_api_key
-OPENAI_MODEL=gpt-4o-mini  # optional
+OPENAI_MODEL=gpt-5-nano  # optional, defaults to gpt-5-nano
 ```
 
 > [!IMPORTANT]
@@ -52,17 +53,7 @@ Start the bot with a single command:
 uv run --env-file .env src/main.py
 ```
 
-The MCP server will automatically start in the background on port 8080 using SSE (Server-Sent Events) transport.
-
-## Available Tools
-
-The MCP server provides the following tools:
-
-- `add(a: int, b: int) -> int` - Adds two numbers together
-- `current_date() -> str` - Returns current date and time with timezone
-- `sleep(num_sec: int) -> None` - Sleeps for specified number of seconds
-- `kid_name() -> str` - Returns a kid's name
-- `get_config() -> dict` - Provides application configuration
+The agent will automatically connect to the MCP server running on `http://localhost:8080/mcp/` with `streamable_http` transport.
 
 ## Usage
 
@@ -72,23 +63,25 @@ The MCP server provides the following tools:
 
 ## Project Structure
 
-- `src/agent.py` - LangChain agent connecting to MCP server
-- `src/mcp_tools.py` - FastMCP server with tools
+- `src/agent.py` - LangChain agent connecting to external MCP server
 - `src/main.py` - Telegram bot with message handlers
 - `src/storage.py` - Database storage layer
 - `src/user.py` - User management
 - `src/envs.py` - Environment configuration
 
-## Adding New Tools
+## Configuration
 
-To add new tools, edit the `start_mcp_server()` function in `src/mcp_tools.py`:
+### OpenAI Settings
 
-```python
-@mcp_server.tool
-def your_new_tool(param: str) -> str:
-    """Description of your tool"""
-    return "result"
-```
+- **Model**: `gpt-5-nano` (default) or any other OpenAI model
+- **Temperature**: `1` (configurable for creativity)
+- **Streaming**: `False` (for better reliability)
+
+### MCP Server Connection
+
+- **URL**: `http://localhost:8080/mcp/`
+- **Transport**: `streamable_http`
+- **Auto-reconnect**: Yes, with error handling
 
 ## Debugging
 
@@ -96,7 +89,7 @@ def your_new_tool(param: str) -> str:
 
 Test if the MCP server is running:
 ```bash
-curl http://localhost:8080/sse
+curl http://localhost:8080/mcp/
 ```
 
 ### Code Quality
@@ -120,8 +113,8 @@ uv run pytest
 
 ## How It Works
 
-1. **MCP Server**: FastMCP server runs in background with custom tools
-2. **LangChain Agent**: Connects to MCP server and processes user messages
+1. **External MCP Server**: FastMCP server runs externally with custom tools
+2. **LangChain Agent**: Connects to external MCP server and processes user messages
 3. **Telegram Bot**: Handles user interactions and forwards messages to agent
 4. **LLM Integration**: OpenAI GPT processes messages and decides which tools to use
 
@@ -130,20 +123,7 @@ uv run pytest
 User: *"Add 5 and 3"*
 
 1. LLM understands the request
-2. Calls `add(5, 3)` tool
+2. Calls `add(5, 3)` tool via MCP server
 3. Gets result `8`
 4. Responds: *"The result of adding 5 and 3 is 8"*
 
-## Troubleshooting
-
-### ModuleNotFoundError
-If you get `ModuleNotFoundError`, make sure you're using `uv run`:
-```bash
-uv run --env-file .env src/main.py
-```
-
-### Event Loop Error
-The agent uses async/await properly to avoid event loop conflicts.
-
-### Transport Error
-The MCP server uses SSE transport which is supported by FastMCP.
