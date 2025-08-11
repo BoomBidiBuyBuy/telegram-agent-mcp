@@ -9,6 +9,12 @@ DEBUG_MODE = bool(int(os.environ.get("DEBUG_MODE", 0)))
 
 STORAGE_DB = os.environ.get("STORAGE_DB", "mysql")
 
+########################
+# fastmcp server url #
+########################
+MCP_SERVER_URL = os.environ.get("MCP_SERVER_URL", "http://localhost:8080/mcp/")
+MCP_SERVER_TRANSPORT = os.environ.get("MCP_SERVER_TRANSPORT", "streamable_http")
+
 ############
 # postgres #
 ############
