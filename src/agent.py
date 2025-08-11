@@ -15,29 +15,32 @@ async def build_agent():
 
     The agent does not persist conversation history in memory.
     """
-    
+
     llm = ChatOpenAI(
         temperature=1,
         streaming=False,
         model=os.environ.get("OPENAI_MODEL", "gpt-5-nano"),
-        api_key=os.environ.get("OPENAI_API_KEY", None)
+        api_key=os.environ.get("OPENAI_API_KEY", None),
     )
 
     try:
         # Create client to connect to our MCP server
-        
-        
-        print(f"🔗 Connecting to MCP server: {MCP_SERVER_URL} with transport: {MCP_SERVER_TRANSPORT}")
-        
-        client = MultiServerMCPClient({
-            "SimpleMCPServer": {
-                "transport": MCP_SERVER_TRANSPORT,
-                "url": MCP_SERVER_URL
+
+        print(
+            f"🔗 Connecting to MCP server: {MCP_SERVER_URL} with transport: {MCP_SERVER_TRANSPORT}"
+        )
+
+        client = MultiServerMCPClient(
+            {
+                "SimpleMCPServer": {
+                    "transport": MCP_SERVER_TRANSPORT,
+                    "url": MCP_SERVER_URL,
+                }
             }
-        })
+        )
         tools = await client.get_tools()
         print(f"✅ Connected to MCP server at {MCP_SERVER_URL}")
-            
+
     except Exception as e:
         print(f"❌ Failed to connect to MCP server: {e}")
         # Return empty tools if MCP server is not available
@@ -54,7 +57,14 @@ async def build_agent():
             print(f"Error in call_model: {e}")
             # Return a simple error message
             from langchain_core.messages import AIMessage
-            return {"messages": [AIMessage(content="Sorry, I encountered an error processing your request.")]}
+
+            return {
+                "messages": [
+                    AIMessage(
+                        content="Sorry, I encountered an error processing your request."
+                    )
+                ]
+            }
 
     builder = StateGraph(MessagesState)
     builder.add_node(call_model)

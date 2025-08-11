@@ -106,24 +106,32 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     """Handle incoming messages and process them with the agent."""
     user_id = update.effective_user.id
     message_text = update.message.text
-    
+
     logger.info(f"User {user_id} sent message: {message_text}")
-    
+
     try:
         # Build the agent
         agent = await build_agent()
-        
+
         # Process the message
-        result = await agent.ainvoke({"messages": [{"role": "user", "content": message_text}]})
-        
+        result = await agent.ainvoke(
+            {"messages": [{"role": "user", "content": message_text}]}
+        )
+
         # Get the response
-        response = result["messages"][-1].content if result["messages"] else "Sorry, I couldn't process your message."
-        
+        response = (
+            result["messages"][-1].content
+            if result["messages"]
+            else "Sorry, I couldn't process your message."
+        )
+
         await update.message.reply_text(response)
-        
+
     except Exception as e:
         logger.error(f"Error processing message: {e}")
-        await update.message.reply_text("Sorry, there was an error processing your message.")
+        await update.message.reply_text(
+            "Sorry, there was an error processing your message."
+        )
 
 
 def main():
@@ -133,7 +141,9 @@ def main():
     # Add handlers
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("token", token_command))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    application.add_handler(
+        MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message)
+    )
     # application.add_handler(CommandHandler("add_token", add_token_command))
 
     # Run the bot
