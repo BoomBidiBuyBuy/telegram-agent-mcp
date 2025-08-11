@@ -10,7 +10,7 @@ This repository implements a proxy server that allows access to an LLM Agent int
 - 🛠️ **MCP Tools**: Custom tools for calculations, date/time, and more
 - 📱 **Telegram Bot**: Easy-to-use interface
 - 🔧 **Local Development**: Simple setup for debugging and testing
-- 🚀 **External MCP Server**: Connects to external MCP server
+- 🚀 **Remote MCP Server**: Connects to external MCP server
 
 ## Development
 
@@ -24,16 +24,23 @@ This repository implements a proxy server that allows access to an LLM Agent int
 
 ### Environment Setup
 
-1. Create `.env` file based on `.env.example`:
+1. Create `.env` file based on `env.example`:
 ```bash
-cp .env.example .env
+cp env.example .env
 ```
 
 2. Fill in the required environment variables:
 ```bash
-TELEGRAM_BOT_TOKEN=your_telegram_bot_token
-OPENAI_API_KEY=your_openai_api_key
-OPENAI_MODEL=gpt-5-nano  # optional, defaults to gpt-5-nano
+# Telegram Bot Configuration
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
+
+# OpenAI Configuration
+OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_MODEL=gpt-5-nano
+
+# MCP Server Configuration
+MCP_SERVER_URL=http://146.103.106.184:8080/mcp/
+MCP_SERVER_TRANSPORT=streamable_http
 ```
 
 > [!IMPORTANT]
@@ -53,7 +60,7 @@ Start the bot with a single command:
 uv run --env-file .env src/main.py
 ```
 
-The agent will automatically connect to the MCP server running on `http://localhost:8080/mcp/` with `streamable_http` transport.
+The agent will automatically connect to the MCP server specified in your `.env` file.
 
 ## Usage
 
@@ -79,9 +86,29 @@ The agent will automatically connect to the MCP server running on `http://localh
 
 ### MCP Server Connection
 
-- **URL**: `http://localhost:8080/mcp/`
-- **Transport**: `streamable_http`
+- **URL**: Configurable via `MCP_SERVER_URL` environment variable
+- **Transport**: Configurable via `MCP_SERVER_TRANSPORT` environment variable
 - **Auto-reconnect**: Yes, with error handling
+
+### Remote MCP Server Setup
+
+To connect to a remote MCP server:
+
+1. **Ensure the server is accessible**:
+   - Server should be bound to `0.0.0.0:8080` (not `127.0.0.1:8080`)
+   - Port 8080 should be open in firewall
+   - Server should support `streamable_http` transport
+
+2. **Configure in `.env`**:
+```bash
+MCP_SERVER_URL=http://your-server-ip:8080/mcp/
+MCP_SERVER_TRANSPORT=streamable_http
+```
+
+3. **Test connectivity**:
+```bash
+curl http://your-server-ip:8080/mcp/
+```
 
 ## Debugging
 
@@ -89,7 +116,7 @@ The agent will automatically connect to the MCP server running on `http://localh
 
 Test if the MCP server is running:
 ```bash
-curl http://localhost:8080/mcp/
+curl $MCP_SERVER_URL
 ```
 
 ### Code Quality

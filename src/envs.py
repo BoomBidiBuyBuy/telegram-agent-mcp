@@ -11,3 +11,6 @@ PG_HOST = os.environ.get("PG_HOST")
 PG_PORT = os.environ.get("PG_PORT")
 
 DEBUG_MODE = bool(int(os.environ.get("DEBUG_MODE", 0)))
+
+MCP_SERVER_URL = os.environ.get("MCP_SERVER_URL", "http://localhost:8080/mcp/")
+MCP_SERVER_TRANSPORT = os.environ.get("MCP_SERVER_TRANSPORT", "streamable_http")

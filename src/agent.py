@@ -5,6 +5,7 @@ from langgraph.graph import StateGraph, MessagesState, START
 from langgraph.prebuilt import ToolNode, tools_condition
 
 from langchain_openai import ChatOpenAI
+from envs import MCP_SERVER_URL, MCP_SERVER_TRANSPORT
 
 
 async def build_agent():
@@ -24,14 +25,18 @@ async def build_agent():
 
     try:
         # Create client to connect to our MCP server
+        
+        
+        print(f"🔗 Connecting to MCP server: {MCP_SERVER_URL} with transport: {MCP_SERVER_TRANSPORT}")
+        
         client = MultiServerMCPClient({
             "SimpleMCPServer": {
-                "transport": "streamable_http",
-                "url": "http://localhost:8080/mcp/"
+                "transport": MCP_SERVER_TRANSPORT,
+                "url": MCP_SERVER_URL
             }
         })
         tools = await client.get_tools()
-        print(f"✅ Connected to MCP server at http://localhost:8080/mcp/")
+        print(f"✅ Connected to MCP server at {MCP_SERVER_URL}")
             
     except Exception as e:
         print(f"❌ Failed to connect to MCP server: {e}")
