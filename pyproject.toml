@@ -7,7 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "psycopg2-binary>=2.9.10",
     "pytest>=8.4.1",
-    "python-telegram-bot>=22.3",
+    "python-telegram-bot[webhooks]>=22.3",
     "sqlalchemy>=2.0.42",
     "langchain>=0.2.0",
     "langchain-openai>=0.2.0",

@@ -84,6 +84,32 @@ The agent will automatically connect to the MCP server specified in your `.env` 
 - **Temperature**: `1` (configurable for creativity)
 - **Streaming**: `False` (for better reliability)
 
+### Communication Modes
+
+We support two ways of communication with the Telegram server:
+- **polling**, ie when bot time to time goes to the telegram servers and checks for new messages or events
+- **webhook**, ie when the bot registers its own url where the telegram server should send new messages and events
+
+The `COMMUNICATION_MODE` env variable handles it. The **polling** is default.
+
+#### Webhook configuration
+
+First of all set the `COMMUNICATION_MODE` to `webhook`.
+
+Using webhook requires setting up SSL.
+
+This command generates `private.key` and `cert.pem` files for SSL.
+```bash
+openssl req -newkey rsa:2048 -sha256 -nodes -keyout private.key -x509 -days 3650 -out cert.pem
+```
+(use domain name / IP address when it asks for FQDN)
+
+Then we need to define `SSL_KEY_PATH` and `SSL_CERT_PATH` env in `.env` to generated files.
+
+The `WEBHOOK_PORT` should be set to 80, 88, 443 or 8443.
+
+The `WEBHOOK_URL` needs to have format `https://<your-domain-or-ip>:<webhook-port>`. Port is required in the URL in this case.
+
 ### MCP Server Connection
 
 - **URL**: Configurable via `MCP_SERVER_URL` environment variable
@@ -111,6 +137,14 @@ curl http://your-server-ip:8080/mcp/
 ```
 
 ## Debugging
+
+### Tests
+
+```bash
+uv run pytest -vs
+```
+
+### Linters
 
 ### Check MCP Server Status
 
@@ -154,3 +188,15 @@ User: *"Add 5 and 3"*
 3. Gets result `8`
 4. Responds: *"The result of adding 5 and 3 is 8"*
 
+## Deployment
+
+### Heroku
+
+Heroku integrates only with the webhook mode.
+
+You need to setup only the following envs on Heroku site:
+- `COMMUNICATION_MODE=webhook`
+- `WEBHOOK_URL=https://<your-app-id>.herokuapp.com/` (note that port should not be in the url because Heroku communicates application through a proxy)
+- `TELEGRAM_BOT_TOKEN`
+
+No need to setup `WEBHOOK_PORT`, `SSL_KEY_PATH` and `SSL_CERT_PATH` because Heroku manages SSL on their proxy side. As for the port, they assigned it through the `PORT` env variable that we use instead of `WEBHOOK_PORT` to be integrated with their approach.
