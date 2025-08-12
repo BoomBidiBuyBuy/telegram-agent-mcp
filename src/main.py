@@ -1,5 +1,7 @@
 import logging
 import uuid
+import asyncio
+from collections import defaultdict
 
 import envs
 from storage import Storage
@@ -24,6 +26,59 @@ logger = logging.getLogger(__name__)
 
 db_session = Storage().build_session().session
 
+# Global agent instance
+agent = None
+agent_initializing = False
+
+# Chat memory for each user
+chat_memory = defaultdict(list)
+
+
+async def get_agent():
+    """Get or initialize the agent (lazy initialization)"""
+    global agent, agent_initializing
+    
+    if agent is not None:
+        return agent
+    
+    if agent_initializing:
+        # Wait for initialization to complete
+        while agent_initializing:
+            await asyncio.sleep(0.1)
+        return agent
+    
+    agent_initializing = True
+    try:
+        logger.info("Initializing agent...")
+        agent = await build_agent()
+        logger.info("Agent initialized successfully")
+        return agent
+    finally:
+        agent_initializing = False
+
+
+def add_message_to_memory(user_id: int, role: str, content: str):
+    """Add message to user's chat memory"""
+    chat_memory[user_id].append({"role": role, "content": content})
+    
+    # Limit memory to last 20 messages to prevent memory overflow
+    if len(chat_memory[user_id]) > 20:
+        chat_memory[user_id] = chat_memory[user_id][-20:]
+    
+    logger.info(f"Added message to memory for user {user_id}. Total messages: {chat_memory[user_id]}")
+
+
+def get_user_messages(user_id: int):
+    """Get all messages for a user"""
+    return chat_memory[user_id]
+
+
+def clear_user_memory(user_id: int):
+    """Clear chat memory for a user"""
+    if user_id in chat_memory:
+        del chat_memory[user_id]
+        logger.info(f"Cleared memory for user {user_id}")
+
 
 # Define command handlers
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -31,9 +86,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     logger.info("Call the 'start' handler")
     user_id = update.effective_user.id
     logger.info(f"User {user_id} started bot")
-    await update.message.reply_text(
-        "Hello! I am your LLM agent MCP bot. Send me a message!"
-    )
+    
+    # Clear previous chat memory when user starts new conversation
+    clear_user_memory(user_id)
+    
+    welcome_message = "Hello! I am your LLM agent MCP bot. Send me a message!"
+    await update.message.reply_text(welcome_message)
+    
+    # Add welcome message to memory
+    add_message_to_memory(user_id, "assistant", welcome_message)
 
 
 # for debugging and testing purposes
@@ -110,28 +171,44 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     logger.info(f"User {user_id} sent message: {message_text}")
 
     try:
-        # Build the agent
-        agent = await build_agent()
+        # Add user message to memory
+        add_message_to_memory(user_id, "user", message_text)
+        
+        # Get or initialize the agent
+        agent = await get_agent()
 
-        # Process the message
-        result = await agent.ainvoke(
-            {"messages": [{"role": "user", "content": message_text}]}
-        )
+        # Get all messages for this user (full context)
+        user_messages = get_user_messages(user_id)
+        logger.info(f"Processing message with {len(user_messages)} messages in context")
+        logger.info(f"Full context: {user_messages}")
+
+        # Process the message with full context
+        logger.info("Calling agent.ainvoke...")
+        result = await agent.ainvoke({"messages": user_messages})
+        logger.info(f"Agent result: {result}")
 
         # Get the response
-        response = (
-            result["messages"][-1].content
-            if result["messages"]
-            else "Sorry, I couldn't process your message."
-        )
+        if result and "messages" in result and result["messages"]:
+            response = result["messages"][-1].content if hasattr(result["messages"][-1], 'content') else str(result["messages"][-1])
+            logger.info(f"Response content: {response}")
+        else:
+            response = "Sorry, I couldn't process your message."
+            logger.warning("No response from agent")
 
         await update.message.reply_text(response)
+        
+        # Add assistant response to memory
+        add_message_to_memory(user_id, "assistant", response)
 
     except Exception as e:
         logger.error(f"Error processing message: {e}")
-        await update.message.reply_text(
-            "Sorry, there was an error processing your message."
-        )
+        import traceback
+        traceback.print_exc()
+        error_message = "Sorry, there was an error processing your message."
+        await update.message.reply_text(error_message)
+        
+        # Add error message to memory
+        add_message_to_memory(user_id, "assistant", error_message)
 
 
 def main():
