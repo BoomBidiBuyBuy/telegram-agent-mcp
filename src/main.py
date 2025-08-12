@@ -1,7 +1,6 @@
 import logging
 import uuid
 import asyncio
-from collections import defaultdict
 
 import envs
 from storage import Storage
@@ -30,9 +29,6 @@ db_session = Storage().build_session().session
 agent = None
 agent_initializing = False
 
-# Chat memory for each user
-chat_memory = defaultdict(list)
-
 
 async def get_agent():
     """Get or initialize the agent (lazy initialization)"""
@@ -57,29 +53,6 @@ async def get_agent():
         agent_initializing = False
 
 
-def add_message_to_memory(user_id: int, role: str, content: str):
-    """Add message to user's chat memory"""
-    chat_memory[user_id].append({"role": role, "content": content})
-    
-    # Limit memory to last 20 messages to prevent memory overflow
-    if len(chat_memory[user_id]) > 20:
-        chat_memory[user_id] = chat_memory[user_id][-20:]
-    
-    logger.info(f"Added message to memory for user {user_id}. Total messages: {chat_memory[user_id]}")
-
-
-def get_user_messages(user_id: int):
-    """Get all messages for a user"""
-    return chat_memory[user_id]
-
-
-def clear_user_memory(user_id: int):
-    """Clear chat memory for a user"""
-    if user_id in chat_memory:
-        del chat_memory[user_id]
-        logger.info(f"Cleared memory for user {user_id}")
-
-
 # Define command handlers
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Sends a welcome message when the /start command is issued."""
@@ -87,14 +60,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
     logger.info(f"User {user_id} started bot")
     
-    # Clear previous chat memory when user starts new conversation
-    clear_user_memory(user_id)
-    
     welcome_message = "Hello! I am your LLM agent MCP bot. Send me a message!"
     await update.message.reply_text(welcome_message)
-    
-    # Add welcome message to memory
-    add_message_to_memory(user_id, "assistant", welcome_message)
 
 
 # for debugging and testing purposes
@@ -171,20 +138,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     logger.info(f"User {user_id} sent message: {message_text}")
 
     try:
-        # Add user message to memory
-        add_message_to_memory(user_id, "user", message_text)
-        
         # Get or initialize the agent
         agent = await get_agent()
 
-        # Get all messages for this user (full context)
-        user_messages = get_user_messages(user_id)
-        logger.info(f"Processing message with {len(user_messages)} messages in context")
-        logger.info(f"Full context: {user_messages}")
+        # Create thread_id for this user (MemoryCheckpoint uses thread_id to separate conversations)
+        thread_id = f"user_{user_id}"
 
-        # Process the message with full context
-        logger.info("Calling agent.ainvoke...")
-        result = await agent.ainvoke({"messages": user_messages})
+        # Process the message with MemoryCheckpoint (automatically handles conversation history)
+        logger.info(f"Processing message for thread: {thread_id}")
+        result = await agent.ainvoke(
+            {"messages": [{"role": "user", "content": message_text}]},
+            config={"configurable": {"thread_id": thread_id}}
+        )
         logger.info(f"Agent result: {result}")
 
         # Get the response
@@ -196,9 +161,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             logger.warning("No response from agent")
 
         await update.message.reply_text(response)
-        
-        # Add assistant response to memory
-        add_message_to_memory(user_id, "assistant", response)
 
     except Exception as e:
         logger.error(f"Error processing message: {e}")
@@ -206,9 +168,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         traceback.print_exc()
         error_message = "Sorry, there was an error processing your message."
         await update.message.reply_text(error_message)
-        
-        # Add error message to memory
-        add_message_to_memory(user_id, "assistant", error_message)
 
 
 def main():

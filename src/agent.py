@@ -3,6 +3,7 @@ import os
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langgraph.graph import StateGraph, MessagesState, START
 from langgraph.prebuilt import ToolNode, tools_condition
+from langgraph.checkpoint.memory import InMemorySaver
 
 from langchain_openai import ChatOpenAI
 from envs import MCP_SERVER_URL, MCP_SERVER_TRANSPORT
@@ -13,9 +14,8 @@ async def build_agent():
     Builds an OpenAI-based agent using the LangChain framework,
     integrated with a simple FastMCP server for local development.
 
-    The agent does not persist conversation history in memory.
+    The agent uses InMemorySaver to persist conversation history.
     """
-
     llm = ChatOpenAI(
         temperature=1,
         streaming=False,
@@ -89,4 +89,6 @@ async def build_agent():
     else:
         builder.add_edge(START, "call_model")
 
-    return builder.compile()
+    # Use InMemorySaver to persist conversation history
+    checkpointer = InMemorySaver()
+    return builder.compile(checkpointer=checkpointer)

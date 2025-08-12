@@ -11,6 +11,7 @@ This repository implements a proxy server that allows access to an LLM Agent int
 - 📱 **Telegram Bot**: Easy-to-use interface
 - 🔧 **Local Development**: Simple setup for debugging and testing
 - 🚀 **Remote MCP Server**: Connects to external MCP server
+- 🧠 **Conversation Memory**: Built-in memory system with InMemorySaver
 
 ## Development
 
@@ -84,6 +85,18 @@ The agent will automatically connect to the MCP server specified in your `.env` 
 - **Temperature**: `1` (configurable for creativity)
 - **Streaming**: `False` (for better reliability)
 
+### MCP Server Connection
+
+- **URL**: Configurable via `MCP_SERVER_URL` environment variable
+- **Transport**: Configurable via `MCP_SERVER_TRANSPORT` environment variable
+- **Auto-reconnect**: Yes, with error handling
+
+### Memory Management
+
+- **InMemorySaver**: Built-in LangGraph memory system for conversation history
+- **Thread-based isolation**: Each user has separate conversation context
+- **Automatic persistence**: Conversation history is automatically maintained between messages
+
 ### Communication Modes
 
 We support two ways of communication with the Telegram server:
@@ -109,12 +122,6 @@ Then we need to define `SSL_KEY_PATH` and `SSL_CERT_PATH` env in `.env` to gener
 The `WEBHOOK_PORT` should be set to 80, 88, 443 or 8443.
 
 The `WEBHOOK_URL` needs to have format `https://<your-domain-or-ip>:<webhook-port>`. Port is required in the URL in this case.
-
-### MCP Server Connection
-
-- **URL**: Configurable via `MCP_SERVER_URL` environment variable
-- **Transport**: Configurable via `MCP_SERVER_TRANSPORT` environment variable
-- **Auto-reconnect**: Yes, with error handling
 
 ### Remote MCP Server Setup
 
@@ -146,15 +153,6 @@ uv run pytest -vs
 
 ### Linters
 
-### Check MCP Server Status
-
-Test if the MCP server is running:
-```bash
-curl $MCP_SERVER_URL
-```
-
-### Code Quality
-
 Run linters:
 ```bash
 uv run ruff check
@@ -163,6 +161,13 @@ uv run ruff check
 Format code:
 ```bash
 uv run ruff format
+```
+
+### Check MCP Server Status
+
+Test if the MCP server is running:
+```bash
+curl $MCP_SERVER_URL
 ```
 
 ### Testing
@@ -178,6 +183,7 @@ uv run pytest
 2. **LangChain Agent**: Connects to external MCP server and processes user messages
 3. **Telegram Bot**: Handles user interactions and forwards messages to agent
 4. **LLM Integration**: OpenAI GPT processes messages and decides which tools to use
+5. **Memory System**: InMemorySaver maintains conversation history for each user
 
 ## Example Interaction
 
