@@ -49,21 +49,22 @@ async def build_agent():
 
     def call_model(state: MessagesState):
         try:
-            print(f"🤖 Processing message with LLM...")
+            print("🤖 Processing message with LLM...")
             print(f"📝 State messages: {state['messages']}")
-            
+
             if tools:
                 print(f"🔧 Using {len(tools)} tools: {[tool.name for tool in tools]}")
                 response = llm.bind_tools(tools).invoke(state["messages"])
                 print(f"✅ LLM response with tools: {response}")
             else:
-                print(f"💬 Using LLM without tools")
+                print("💬 Using LLM without tools")
                 response = llm.invoke(state["messages"])
                 print(f"✅ LLM response without tools: {response}")
             return {"messages": response}
         except Exception as e:
             print(f"❌ Error in call_model: {e}")
             import traceback
+
             traceback.print_exc()
             # Return a simple error message
             from langchain_core.messages import AIMessage

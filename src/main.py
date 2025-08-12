@@ -33,16 +33,16 @@ agent_initializing = False
 async def get_agent():
     """Get or initialize the agent (lazy initialization)"""
     global agent, agent_initializing
-    
+
     if agent is not None:
         return agent
-    
+
     if agent_initializing:
         # Wait for initialization to complete
         while agent_initializing:
             await asyncio.sleep(0.1)
         return agent
-    
+
     agent_initializing = True
     try:
         logger.info("Initializing agent...")
@@ -59,7 +59,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     logger.info("Call the 'start' handler")
     user_id = update.effective_user.id
     logger.info(f"User {user_id} started bot")
-    
+
     welcome_message = "Hello! I am your LLM agent MCP bot. Send me a message!"
     await update.message.reply_text(welcome_message)
 
@@ -148,13 +148,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         logger.info(f"Processing message for thread: {thread_id}")
         result = await agent.ainvoke(
             {"messages": [{"role": "user", "content": message_text}]},
-            config={"configurable": {"thread_id": thread_id}}
+            config={"configurable": {"thread_id": thread_id}},
         )
         logger.info(f"Agent result: {result}")
 
         # Get the response
         if result and "messages" in result and result["messages"]:
-            response = result["messages"][-1].content if hasattr(result["messages"][-1], 'content') else str(result["messages"][-1])
+            response = (
+                result["messages"][-1].content
+                if hasattr(result["messages"][-1], "content")
+                else str(result["messages"][-1])
+            )
             logger.info(f"Response content: {response}")
         else:
             response = "Sorry, I couldn't process your message."
@@ -165,6 +169,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     except Exception as e:
         logger.error(f"Error processing message: {e}")
         import traceback
+
         traceback.print_exc()
         error_message = "Sorry, there was an error processing your message."
         await update.message.reply_text(error_message)
