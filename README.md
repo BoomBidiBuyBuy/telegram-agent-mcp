@@ -42,10 +42,35 @@ OPENAI_MODEL=gpt-5-nano
 # MCP Server Configuration
 MCP_SERVER_URL=http://146.103.106.184:8080/mcp/
 MCP_SERVER_TRANSPORT=streamable_http
+
+# Optional: path to JSON with multiple MCP servers
+MCP_SERVERS_FILE_PATH=mcp-servers.json
 ```
 
 > [!IMPORTANT]
 > For development, you can use `mysql` for `STORAGE_DB` since it keeps all data in memory.
+
+### MCP servers JSON (with env expansion)
+
+You can define multiple MCP servers in a JSON file. The loader supports environment variable expansion like `${VAR}` or `$VAR` in any string field.
+
+Example `mcp-servers.json`:
+```json
+{
+  "mcpServers": {
+    "RemoteHTTP": {
+      "transport": "streamable_http",
+      "url": "${MCP_SERVER_URL}"
+    },
+    "LocalSSE": {
+      "transport": "sse",
+      "url": "http://localhost:${MCP_PORT}/sse"
+    }
+  }
+}
+```
+
+The agent will merge and expand variables when loading servers, then connect via `langchain_mcp_adapters`.
 
 ### Installation
 
@@ -61,7 +86,7 @@ Start the bot with a single command:
 uv run --env-file .env src/main.py
 ```
 
-The agent will automatically connect to the MCP server specified in your `.env` file.
+The agent will automatically connect to the MCP server specified in your `.env` or `mcp-servers.json`.
 
 ## Usage
 
@@ -71,7 +96,7 @@ The agent will automatically connect to the MCP server specified in your `.env` 
 
 ## Project Structure
 
-- `src/agent.py` - LangChain agent connecting to external MCP server
+- `src/agent.py` - LangChain agent connecting to external MCP server(s)
 - `src/main.py` - Telegram bot with message handlers
 - `src/storage.py` - Database storage layer
 - `src/user.py` - User management
@@ -87,8 +112,9 @@ The agent will automatically connect to the MCP server specified in your `.env` 
 
 ### MCP Server Connection
 
-- **URL**: Configurable via `MCP_SERVER_URL` environment variable
-- **Transport**: Configurable via `MCP_SERVER_TRANSPORT` environment variable
+- **URL**: `MCP_SERVER_URL` or via `mcp-servers.json`
+- **Transport**: Configurable via `MCP_SERVER_TRANSPORT` or in JSON
+- **Servers file**: `MCP_SERVERS_FILE_PATH` (default: `mcp-servers.json`)
 - **Auto-reconnect**: Yes, with error handling
 
 ### Memory Management
@@ -180,19 +206,10 @@ uv run pytest
 ## How It Works
 
 1. **External MCP Server**: FastMCP server runs externally with custom tools
-2. **LangChain Agent**: Connects to external MCP server and processes user messages
+2. **LangChain Agent**: Connects to external MCP server(s) and processes user messages
 3. **Telegram Bot**: Handles user interactions and forwards messages to agent
 4. **LLM Integration**: OpenAI GPT processes messages and decides which tools to use
 5. **Memory System**: InMemorySaver maintains conversation history for each user
-
-## Example Interaction
-
-User: *"Add 5 and 3"*
-
-1. LLM understands the request
-2. Calls `add(5, 3)` tool via MCP server
-3. Gets result `8`
-4. Responds: *"The result of adding 5 and 3 is 8"*
 
 ## Deployment
 
@@ -206,3 +223,13 @@ You need to setup only the following envs on Heroku site:
 - `TELEGRAM_BOT_TOKEN`
 
 No need to setup `WEBHOOK_PORT`, `SSL_KEY_PATH` and `SSL_CERT_PATH` because Heroku manages SSL on their proxy side. As for the port, they assigned it through the `PORT` env variable that we use instead of `WEBHOOK_PORT` to be integrated with their approach.
+
+## Dependencies
+
+Key dependencies:
+- `langchain>=0.2.0`
+- `langchain-openai>=0.2.0`
+- `langchain-mcp-adapters>=0.1.0`
+- `langgraph>=0.6.4`
+- `fastmcp>=0.1.0`
+- `python-telegram-bot>=22.3`

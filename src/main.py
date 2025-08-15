@@ -1,11 +1,10 @@
 import logging
 import uuid
-import asyncio
 
 import envs
 from storage import Storage
 from user import User, Token
-from agent import build_agent
+from agent import get_agent
 
 from telegram import Update
 from telegram.ext import (
@@ -24,33 +23,6 @@ logger = logging.getLogger(__name__)
 
 
 db_session = Storage().build_session().session
-
-# Global agent instance
-agent = None
-agent_initializing = False
-
-
-async def get_agent():
-    """Get or initialize the agent (lazy initialization)"""
-    global agent, agent_initializing
-
-    if agent is not None:
-        return agent
-
-    if agent_initializing:
-        # Wait for initialization to complete
-        while agent_initializing:
-            await asyncio.sleep(0.1)
-        return agent
-
-    agent_initializing = True
-    try:
-        logger.info("Initializing agent...")
-        agent = await build_agent()
-        logger.info("Agent initialized successfully")
-        return agent
-    finally:
-        agent_initializing = False
 
 
 # Define command handlers

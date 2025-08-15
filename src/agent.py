@@ -1,4 +1,7 @@
 import os
+import logging
+import asyncio
+import json
 
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langgraph.graph import StateGraph, MessagesState, START
@@ -6,8 +9,14 @@ from langgraph.prebuilt import ToolNode, tools_condition
 from langgraph.checkpoint.memory import InMemorySaver
 
 from langchain_openai import ChatOpenAI
-from envs import MCP_SERVER_URL, MCP_SERVER_TRANSPORT
+from envs import MCP_SERVER_URL, MCP_SERVER_TRANSPORT, MCP_SERVERS_FILE_PATH
 
+
+logger = logging.getLogger(__name__)
+
+# Global agent instance
+agent = None
+agent_initializing = False
 
 async def build_agent():
     """
@@ -26,46 +35,42 @@ async def build_agent():
     try:
         # Create client to connect to our MCP server
 
-        print(
-            f"🔗 Connecting to MCP server: {MCP_SERVER_URL} with transport: {MCP_SERVER_TRANSPORT}"
+        logger.info(
+            "Connecting to MCP server: %s with transport: %s",
+            MCP_SERVER_URL,
+            MCP_SERVER_TRANSPORT,
         )
 
-        client = MultiServerMCPClient(
-            {
-                "SimpleMCPServer": {
-                    "transport": MCP_SERVER_TRANSPORT,
-                    "url": MCP_SERVER_URL,
-                }
-            }
-        )
+        mcp_servers = load_mcp_servers()
+
+        client = MultiServerMCPClient(mcp_servers)
         tools = await client.get_tools()
-        print(f"✅ Connected to MCP server at {MCP_SERVER_URL}")
-        print(f"🔧 Loaded {len(tools)} tools: {[tool.name for tool in tools]}")
+        logger.info("Connected to MCP server at %s", MCP_SERVER_URL)
+        logger.info("Loaded %d tools: %s", len(tools), [tool.name for tool in tools])
 
     except Exception as e:
-        print(f"❌ Failed to connect to MCP server: {e}")
+        logger.exception("Failed to connect to MCP server: %s", e)
         # Return empty tools if MCP server is not available
         tools = []
 
     def call_model(state: MessagesState):
         try:
-            print("🤖 Processing message with LLM...")
-            print(f"📝 State messages: {state['messages']}")
+            logger.info("Processing message with LLM...")
+            logger.debug("State messages: %s", state["messages"])
 
             if tools:
-                print(f"🔧 Using {len(tools)} tools: {[tool.name for tool in tools]}")
+                logger.info(
+                    "Using %d tools: %s", len(tools), [tool.name for tool in tools]
+                )
                 response = llm.bind_tools(tools).invoke(state["messages"])
-                print(f"✅ LLM response with tools: {response}")
+                logger.debug("LLM response with tools: %s", response)
             else:
-                print("💬 Using LLM without tools")
+                logger.info("Using LLM without tools")
                 response = llm.invoke(state["messages"])
-                print(f"✅ LLM response without tools: {response}")
+                logger.debug("LLM response without tools: %s", response)
             return {"messages": response}
         except Exception as e:
-            print(f"❌ Error in call_model: {e}")
-            import traceback
-
-            traceback.print_exc()
+            logger.exception("Error in call_model: %s", e)
             # Return a simple error message
             from langchain_core.messages import AIMessage
 
@@ -93,3 +98,46 @@ async def build_agent():
     # Use InMemorySaver to persist conversation history
     checkpointer = InMemorySaver()
     return builder.compile(checkpointer=checkpointer)
+
+
+async def get_agent():
+    """Get or initialize the agent (lazy initialization)"""
+    global agent, agent_initializing
+
+    if agent is not None:
+        return agent
+
+    if agent_initializing:
+        # Wait for initialization to complete
+        while agent_initializing:
+            await asyncio.sleep(0.1)
+        return agent
+
+    agent_initializing = True
+    try:
+        logger.info("Initializing agent...")
+        agent = await build_agent()
+        logger.info("Agent initialized successfully")
+        return agent
+    finally:
+        agent_initializing = False
+
+
+def _expand_env_vars(value):
+    """Recursively expand ${VAR} or $VAR in strings inside dict/list structures."""
+    if isinstance(value, str):
+        return os.path.expandvars(value)
+    if isinstance(value, dict):
+        return {k: _expand_env_vars(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_expand_env_vars(v) for v in value]
+    return value
+
+
+def load_mcp_servers():
+    with open(MCP_SERVERS_FILE_PATH) as f:
+        permanent_servers = json.load(f)
+    mcp_servers = permanent_servers.get("mcpServers", {})
+    mcp_servers = _expand_env_vars(mcp_servers)
+    logger.info("Loaded MCP servers: %s", mcp_servers)
+    return mcp_servers
