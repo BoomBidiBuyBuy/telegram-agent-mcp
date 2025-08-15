@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 agent = None
 agent_initializing = False
 
+
 async def build_agent():
     """
     Builds an OpenAI-based agent using the LangChain framework,
