@@ -14,6 +14,8 @@ STORAGE_DB = os.environ.get("STORAGE_DB", "mysql")
 ########################
 MCP_SERVER_URL = os.environ.get("MCP_SERVER_URL", "http://localhost:8080/mcp/")
 MCP_SERVER_TRANSPORT = os.environ.get("MCP_SERVER_TRANSPORT", "streamable_http")
+# path to mcp servers json file (used by loader in agent)
+MCP_SERVERS_FILE_PATH = os.environ.get("MCP_SERVERS_FILE_PATH", "mcp-servers.json")
 
 ############
 # postgres #

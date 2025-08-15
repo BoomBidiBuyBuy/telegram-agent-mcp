@@ -1,0 +1,8 @@
+{
+    "mcpServers": {
+        "SimpleMCPServer": {
+            "transport": "${MCP_SERVER_TRANSPORT}",
+            "url": "${MCP_SERVER_URL}"
+        }
+    }
+}
