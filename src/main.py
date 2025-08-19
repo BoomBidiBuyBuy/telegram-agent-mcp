@@ -4,7 +4,7 @@ import uuid
 import envs
 from storage import Storage
 from user import User, Token
-from agent import build_agent
+from agent import get_agent
 
 from telegram import Update
 from telegram.ext import (
@@ -31,9 +31,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     logger.info("Call the 'start' handler")
     user_id = update.effective_user.id
     logger.info(f"User {user_id} started bot")
-    await update.message.reply_text(
-        "Hello! I am your LLM agent MCP bot. Send me a message!"
-    )
+
+    welcome_message = "Hello! I am your LLM agent MCP bot. Send me a message!"
+    await update.message.reply_text(welcome_message)
 
 
 # for debugging and testing purposes
@@ -110,28 +110,41 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     logger.info(f"User {user_id} sent message: {message_text}")
 
     try:
-        # Build the agent
-        agent = await build_agent()
+        # Get or initialize the agent
+        agent = await get_agent()
 
-        # Process the message
+        # Create thread_id for this user (MemoryCheckpoint uses thread_id to separate conversations)
+        thread_id = f"user_{user_id}"
+
+        # Process the message with MemoryCheckpoint (automatically handles conversation history)
+        logger.info(f"Processing message for thread: {thread_id}")
         result = await agent.ainvoke(
-            {"messages": [{"role": "user", "content": message_text}]}
+            {"messages": [{"role": "user", "content": message_text}]},
+            config={"configurable": {"thread_id": thread_id}},
         )
+        logger.info(f"Agent result: {result}")
 
         # Get the response
-        response = (
-            result["messages"][-1].content
-            if result["messages"]
-            else "Sorry, I couldn't process your message."
-        )
+        if result and "messages" in result and result["messages"]:
+            response = (
+                result["messages"][-1].content
+                if hasattr(result["messages"][-1], "content")
+                else str(result["messages"][-1])
+            )
+            logger.info(f"Response content: {response}")
+        else:
+            response = "Sorry, I couldn't process your message."
+            logger.warning("No response from agent")
 
         await update.message.reply_text(response)
 
     except Exception as e:
         logger.error(f"Error processing message: {e}")
-        await update.message.reply_text(
-            "Sorry, there was an error processing your message."
-        )
+        import traceback
+
+        traceback.print_exc()
+        error_message = "Sorry, there was an error processing your message."
+        await update.message.reply_text(error_message)
 
 
 def main():

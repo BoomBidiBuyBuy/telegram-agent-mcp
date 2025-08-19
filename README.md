@@ -11,6 +11,7 @@ This repository implements a proxy server that allows access to an LLM Agent int
 - 📱 **Telegram Bot**: Easy-to-use interface
 - 🔧 **Local Development**: Simple setup for debugging and testing
 - 🚀 **Remote MCP Server**: Connects to external MCP server
+- 🧠 **Conversation Memory**: Built-in memory system with InMemorySaver
 
 ## Development
 
@@ -39,12 +40,37 @@ OPENAI_API_KEY=your_openai_api_key_here
 OPENAI_MODEL=gpt-5-nano
 
 # MCP Server Configuration
-MCP_SERVER_URL=http://146.103.106.184:8080/mcp/
+MCP_SERVER_URL=mcp_server_url
 MCP_SERVER_TRANSPORT=streamable_http
+
+# Path to JSON with multiple MCP servers
+MCP_SERVERS_FILE_PATH=mcp-servers.json
 ```
 
 > [!IMPORTANT]
 > For development, you can use `mysql` for `STORAGE_DB` since it keeps all data in memory.
+
+### MCP servers JSON (with env expansion)
+
+You can define multiple MCP servers in a JSON file. The loader supports environment variable expansion like `${VAR}` or `$VAR` in any string field.
+
+Example `mcp-servers.json`:
+```json
+{
+  "mcpServers": {
+    "RemoteHTTP": {
+      "transport": "streamable_http",
+      "url": "${MCP_SERVER_URL}"
+    },
+    "LocalSSE": {
+      "transport": "sse",
+      "url": "http://localhost:${MCP_PORT}/sse"
+    }
+  }
+}
+```
+
+The agent will merge and expand variables when loading servers, then connect via `langchain_mcp_adapters`.
 
 ### Installation
 
@@ -60,7 +86,7 @@ Start the bot with a single command:
 uv run --env-file .env src/main.py
 ```
 
-The agent will automatically connect to the MCP server specified in your `.env` file.
+The agent will automatically connect to the MCP server specified in your `.env` or `mcp-servers.json`.
 
 ## Usage
 
@@ -70,7 +96,7 @@ The agent will automatically connect to the MCP server specified in your `.env` 
 
 ## Project Structure
 
-- `src/agent.py` - LangChain agent connecting to external MCP server
+- `src/agent.py` - LangChain agent connecting to external MCP server(s)
 - `src/main.py` - Telegram bot with message handlers
 - `src/storage.py` - Database storage layer
 - `src/user.py` - User management
@@ -83,6 +109,19 @@ The agent will automatically connect to the MCP server specified in your `.env` 
 - **Model**: `gpt-5-nano` (default) or any other OpenAI model
 - **Temperature**: `1` (configurable for creativity)
 - **Streaming**: `False` (for better reliability)
+
+### MCP Server Connection
+
+- **URL**: `MCP_SERVER_URL` or via `mcp-servers.json`
+- **Transport**: Configurable via `MCP_SERVER_TRANSPORT` or in JSON
+- **Servers file**: `MCP_SERVERS_FILE_PATH` (default: `mcp-servers.json`)
+- **Auto-reconnect**: Yes, with error handling
+
+### Memory Management
+
+- **InMemorySaver**: Built-in LangGraph memory system for conversation history
+- **Thread-based isolation**: Each user has separate conversation context
+- **Automatic persistence**: Conversation history is automatically maintained between messages
 
 ### Communication Modes
 
@@ -109,12 +148,6 @@ Then we need to define `SSL_KEY_PATH` and `SSL_CERT_PATH` env in `.env` to gener
 The `WEBHOOK_PORT` should be set to 80, 88, 443 or 8443.
 
 The `WEBHOOK_URL` needs to have format `https://<your-domain-or-ip>:<webhook-port>`. Port is required in the URL in this case.
-
-### MCP Server Connection
-
-- **URL**: Configurable via `MCP_SERVER_URL` environment variable
-- **Transport**: Configurable via `MCP_SERVER_TRANSPORT` environment variable
-- **Auto-reconnect**: Yes, with error handling
 
 ### Remote MCP Server Setup
 
@@ -146,15 +179,6 @@ uv run pytest -vs
 
 ### Linters
 
-### Check MCP Server Status
-
-Test if the MCP server is running:
-```bash
-curl $MCP_SERVER_URL
-```
-
-### Code Quality
-
 Run linters:
 ```bash
 uv run ruff check
@@ -163,6 +187,13 @@ uv run ruff check
 Format code:
 ```bash
 uv run ruff format
+```
+
+### Check MCP Server Status
+
+Test if the MCP server is running:
+```bash
+curl $MCP_SERVER_URL
 ```
 
 ### Testing
@@ -175,18 +206,10 @@ uv run pytest
 ## How It Works
 
 1. **External MCP Server**: FastMCP server runs externally with custom tools
-2. **LangChain Agent**: Connects to external MCP server and processes user messages
+2. **LangChain Agent**: Connects to external MCP server(s) and processes user messages
 3. **Telegram Bot**: Handles user interactions and forwards messages to agent
 4. **LLM Integration**: OpenAI GPT processes messages and decides which tools to use
-
-## Example Interaction
-
-User: *"Add 5 and 3"*
-
-1. LLM understands the request
-2. Calls `add(5, 3)` tool via MCP server
-3. Gets result `8`
-4. Responds: *"The result of adding 5 and 3 is 8"*
+5. **Memory System**: InMemorySaver maintains conversation history for each user
 
 ## Deployment
 
@@ -200,3 +223,59 @@ You need to setup only the following envs on Heroku site:
 - `TELEGRAM_BOT_TOKEN`
 
 No need to setup `WEBHOOK_PORT`, `SSL_KEY_PATH` and `SSL_CERT_PATH` because Heroku manages SSL on their proxy side. As for the port, they assigned it through the `PORT` env variable that we use instead of `WEBHOOK_PORT` to be integrated with their approach.
+
+## Dependencies
+
+Key dependencies:
+- `langchain>=0.2.0`
+- `langchain-openai>=0.2.0`
+- `langchain-mcp-adapters>=0.1.0`
+- `langgraph>=0.6.4`
+- `fastmcp>=0.1.0`
+- `python-telegram-bot>=22.3`
+
+## Reply Service MCP (standalone)
+
+A lightweight standalone MCP server that lets external systems trigger a message from your Telegram bot to a specific user.
+
+### Environment
+
+Add to your `.env` (or use defaults):
+```bash
+REPLY_SERVICE_MCP_HOST=0.0.0.0
+REPLY_SERVICE_MCP_PORT=8091
+```
+
+Requires `TELEGRAM_BOT_TOKEN` to be set.
+
+### Run
+
+```bash
+uv run --env-file .env python mcp_servers/reply_service/main.py
+```
+
+The MCP endpoint will be available at:
+
+```text
+http://${REPLY_SERVICE_MCP_HOST}:${REPLY_SERVICE_MCP_PORT}/mcp/
+```
+
+### Use from the agent (optional)
+
+`assets/mcp-servers.json` already includes the Reply Service entry:
+```json
+{
+  "mcpServers": {
+    "SimpleMCPServer": {
+      "transport": "${MCP_SERVER_TRANSPORT}",
+      "url": "${MCP_SERVER_URL}"
+    },
+    "ReplyService": {
+      "transport": "streamable_http",
+      "url": "http://${REPLY_SERVICE_MCP_HOST}:${REPLY_SERVICE_MCP_PORT}/mcp/"
+    }
+  }
+}
+```
+
+When the agent starts, it will load this server and expose its tools to the LLM.
