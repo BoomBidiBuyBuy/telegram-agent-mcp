@@ -43,5 +43,6 @@ def main() -> None:
         port=envs.REPLY_SERVICE_MCP_PORT,
     )
 
+
 if __name__ == "__main__":
     main()
