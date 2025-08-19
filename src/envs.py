@@ -17,6 +17,12 @@ MCP_SERVER_TRANSPORT = os.environ.get("MCP_SERVER_TRANSPORT", "streamable_http")
 # path to mcp servers json file (used by loader in agent)
 MCP_SERVERS_FILE_PATH = os.environ.get("MCP_SERVERS_FILE_PATH", "mcp-servers.json")
 
+#############################
+# Reply Service MCP settings #
+#############################
+REPLY_SERVICE_MCP_HOST = os.environ.get("REPLY_SERVICE_MCP_HOST", "0.0.0.0")
+REPLY_SERVICE_MCP_PORT = int(os.environ.get("REPLY_SERVICE_MCP_PORT", "8091"))
+
 ############
 # postgres #
 ############

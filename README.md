@@ -40,10 +40,10 @@ OPENAI_API_KEY=your_openai_api_key_here
 OPENAI_MODEL=gpt-5-nano
 
 # MCP Server Configuration
-MCP_SERVER_URL=http://146.103.106.184:8080/mcp/
+MCP_SERVER_URL=mcp_server_url
 MCP_SERVER_TRANSPORT=streamable_http
 
-# Optional: path to JSON with multiple MCP servers
+# Path to JSON with multiple MCP servers
 MCP_SERVERS_FILE_PATH=mcp-servers.json
 ```
 
@@ -233,3 +233,49 @@ Key dependencies:
 - `langgraph>=0.6.4`
 - `fastmcp>=0.1.0`
 - `python-telegram-bot>=22.3`
+
+## Reply Service MCP (standalone)
+
+A lightweight standalone MCP server that lets external systems trigger a message from your Telegram bot to a specific user.
+
+### Environment
+
+Add to your `.env` (or use defaults):
+```bash
+REPLY_SERVICE_MCP_HOST=0.0.0.0
+REPLY_SERVICE_MCP_PORT=8091
+```
+
+Requires `TELEGRAM_BOT_TOKEN` to be set.
+
+### Run
+
+```bash
+uv run --env-file .env python mcp_servers/reply_service/main.py
+```
+
+The MCP endpoint will be available at:
+
+```text
+http://${REPLY_SERVICE_MCP_HOST}:${REPLY_SERVICE_MCP_PORT}/mcp/
+```
+
+### Use from the agent (optional)
+
+`assets/mcp-servers.json` already includes the Reply Service entry:
+```json
+{
+  "mcpServers": {
+    "SimpleMCPServer": {
+      "transport": "${MCP_SERVER_TRANSPORT}",
+      "url": "${MCP_SERVER_URL}"
+    },
+    "ReplyService": {
+      "transport": "streamable_http",
+      "url": "http://${REPLY_SERVICE_MCP_HOST}:${REPLY_SERVICE_MCP_PORT}/mcp/"
+    }
+  }
+}
+```
+
+When the agent starts, it will load this server and expose its tools to the LLM.
