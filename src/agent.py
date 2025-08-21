@@ -9,7 +9,7 @@ from langgraph.prebuilt import ToolNode, tools_condition
 from langgraph.checkpoint.memory import InMemorySaver
 
 from langchain_openai import ChatOpenAI
-from envs import MCP_SERVER_URL, MCP_SERVER_TRANSPORT, MCP_SERVERS_FILE_PATH
+from envs import MCP_SERVERS_FILE_PATH
 
 
 logger = logging.getLogger(__name__)
@@ -36,17 +36,13 @@ async def build_agent():
     try:
         # Create client to connect to our MCP server
 
-        logger.info(
-            "Connecting to MCP server: %s with transport: %s",
-            MCP_SERVER_URL,
-            MCP_SERVER_TRANSPORT,
-        )
+        logger.info("Connecting to MCP servers...")
 
         mcp_servers = load_mcp_servers()
 
         client = MultiServerMCPClient(mcp_servers)
         tools = await client.get_tools()
-        logger.info("Connected to MCP server at %s", MCP_SERVER_URL)
+        logger.info("Connected to MCP servers")
         logger.info("Loaded %d tools: %s", len(tools), [tool.name for tool in tools])
 
     except Exception as e:

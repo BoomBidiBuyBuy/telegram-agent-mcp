@@ -1,379 +1,472 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from typing import List, Optional
-from .models import Base, Group, User, group_user_association
+from .models import Base, Group, User
 import logging
 
 logger = logging.getLogger(__name__)
 
 
 class DatabaseManager:
-    """Менеджер для работы с базой данных"""
-    
+    """Database manager for database operations"""
+
     def __init__(self, database_url: str):
         """
-        Инициализация менеджера БД
-        
+        Initialize database manager
+
         Args:
-            database_url: URL подключения к базе данных
+            database_url: Database connection URL
         """
         self.engine = create_engine(database_url)
-        self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
-        
+        self.SessionLocal = sessionmaker(
+            autocommit=False, autoflush=False, bind=self.engine
+        )
+
     def create_tables(self):
-        """Создание всех таблиц в базе данных"""
+        """Create all tables in the database"""
         Base.metadata.create_all(bind=self.engine)
         logger.info("Database tables created successfully")
-    
+
     def get_session(self) -> Session:
-        """Получение сессии базы данных"""
+        """Get database session"""
         return self.SessionLocal()
-    
+
     def close_session(self, session: Session):
-        """Закрытие сессии базы данных"""
+        """Close database session"""
         session.close()
 
 
 class GroupDatabase:
-    """Класс для работы с базой данных групп и пользователей"""
-    
+    """Class for working with groups and users database"""
+
     def __init__(self, database_url: str):
         """
-        Инициализация базы данных групп и пользователей
-        
+        Initialize groups and users database
+
         Args:
-            database_url: URL подключения к базе данных
+            database_url: Database connection URL
         """
         self.db_manager = DatabaseManager(database_url)
         self.db_manager.create_tables()
-    
-    def create_group(self, name: str, user_ids: List[int] = None, description: str = None) -> dict:
+
+    def create_group(
+        self, name: str, user_ids: List[int] = None, description: str = None
+    ) -> dict:
         """
-        Создание группы с параметрами
-        
+        Create group with parameters
+
         Args:
-            name: Название группы
-            user_ids: Список telegram_id пользователей для добавления в группу
-            description: Описание группы
-            
+            name: Group name
+            user_ids: List of telegram_id users to add to the group
+            description: Group description
+
         Returns:
-            Словарь с данными созданной группы
-            
+            Dictionary with created group data
+
         Raises:
-            ValueError: Если группа с таким именем уже существует
+            ValueError: If group with this name already exists
         """
         session = self.db_manager.get_session()
         try:
-            # Проверяем, существует ли группа с таким именем
+            # Check if group with this name already exists
             existing_group = session.query(Group).filter(Group.name == name).first()
             if existing_group:
-                raise ValueError(f"Группа с именем '{name}' уже существует")
-            
-            # Создаем новую группу
+                raise ValueError(f"Group with name '{name}' already exists")
+
+            # Create new group
             group = Group(name=name, description=description)
             session.add(group)
-            session.flush()  # Получаем ID группы
-            
-            # Добавляем пользователей в группу
+            session.flush()  # Get group ID
+
+            # Add users to the group
             users_count = 0
             if user_ids:
                 for telegram_id in user_ids:
-                    user = session.query(User).filter(User.telegram_id == telegram_id).first()
+                    user = (
+                        session.query(User)
+                        .filter(User.telegram_id == telegram_id)
+                        .first()
+                    )
                     if user:
                         group.users.append(user)
                         users_count += 1
                     else:
-                        logger.warning(f"Пользователь с telegram_id {telegram_id} не найден")
-            
+                        logger.warning(f"User with telegram_id {telegram_id} not found")
+
             session.commit()
-            
-            # Возвращаем словарь с данными группы
+
+            # Return dictionary with group data
             group_data = {
-                'id': group.id,
-                'name': group.name,
-                'description': group.description,
-                'users_count': users_count,
-                'created_at': group.created_at
+                "id": group.id,
+                "name": group.name,
+                "description": group.description,
+                "users_count": users_count,
+                "created_at": group.created_at,
             }
-            
-            logger.info(f"Группа '{name}' создана успешно")
+
+            logger.info(f"Group '{name}' created successfully")
             return group_data
-            
+
         except Exception as e:
             session.rollback()
-            logger.error(f"Ошибка при создании группы: {e}")
+            logger.error(f"Error creating group: {e}")
             raise
         finally:
             self.db_manager.close_session(session)
-    
+
     def delete_group(self, group_id: int) -> bool:
         """
-        Удаление группы
-        
+        Delete group
+
         Args:
-            group_id: ID группы для удаления
-            
+            group_id: Group ID to delete
+
         Returns:
-            True если группа удалена, False если группа не найдена
+            True if group deleted, False if group not found
         """
         session = self.db_manager.get_session()
         try:
             group = session.query(Group).filter(Group.id == group_id).first()
             if not group:
-                logger.warning(f"Группа с ID {group_id} не найдена")
+                logger.warning(f"Group with ID {group_id} not found")
                 return False
-            
+
             session.delete(group)
             session.commit()
-            logger.info(f"Группа '{group.name}' удалена успешно")
+            logger.info(f"Group '{group.name}' deleted successfully")
             return True
-            
+
         except Exception as e:
             session.rollback()
-            logger.error(f"Ошибка при удалении группы: {e}")
+            logger.error(f"Error deleting group: {e}")
             raise
         finally:
             self.db_manager.close_session(session)
-    
+
     def add_user_to_group(self, group_id: int, telegram_id: int) -> bool:
         """
-        Добавление пользователя в группу
-        
+        Add user to group
+
         Args:
-            group_id: ID группы
-            telegram_id: Telegram ID пользователя
-            
+            group_id: Group ID
+            telegram_id: User's Telegram ID
+
         Returns:
-            True если пользователь добавлен, False если группа или пользователь не найдены
+            True if user added, False if group or user not found
         """
         session = self.db_manager.get_session()
         try:
             group = session.query(Group).filter(Group.id == group_id).first()
             if not group:
-                logger.warning(f"Группа с ID {group_id} не найдена")
+                logger.warning(f"Group with ID {group_id} not found")
                 return False
-            
+
             user = session.query(User).filter(User.telegram_id == telegram_id).first()
             if not user:
-                logger.warning(f"Пользователь с telegram_id {telegram_id} не найден")
+                logger.warning(f"User with telegram_id {telegram_id} not found")
                 return False
-            
-            # Проверяем, не состоит ли пользователь уже в группе
+
+            # Check if user is already in the group
             if user in group.users:
-                logger.info(f"Пользователь {telegram_id} уже состоит в группе '{group.name}'")
+                logger.info(f"User {telegram_id} is already in group '{group.name}'")
                 return True
-            
+
             group.users.append(user)
             session.commit()
-            logger.info(f"Пользователь {telegram_id} добавлен в группу '{group.name}'")
+            logger.info(f"User {telegram_id} added to group '{group.name}'")
             return True
-            
+
         except Exception as e:
             session.rollback()
-            logger.error(f"Ошибка при добавлении пользователя в группу: {e}")
+            logger.error(f"Error adding user to group: {e}")
             raise
         finally:
             self.db_manager.close_session(session)
-    
+
     def remove_user_from_group(self, group_id: int, telegram_id: int) -> bool:
         """
-        Удаление пользователя из группы
-        
+        Remove user from group
+
         Args:
-            group_id: ID группы
-            telegram_id: Telegram ID пользователя
-            
+            group_id: Group ID
+            telegram_id: User's Telegram ID
+
         Returns:
-            True если пользователь удален, False если группа или пользователь не найдены
+            True if user removed, False if group or user not found
         """
         session = self.db_manager.get_session()
         try:
             group = session.query(Group).filter(Group.id == group_id).first()
             if not group:
-                logger.warning(f"Группа с ID {group_id} не найдена")
+                logger.warning(f"Group with ID {group_id} not found")
                 return False
-            
+
             user = session.query(User).filter(User.telegram_id == telegram_id).first()
             if not user:
-                logger.warning(f"Пользователь с telegram_id {telegram_id} не найден")
+                logger.warning(f"User with telegram_id {telegram_id} not found")
                 return False
-            
-            # Проверяем, состоит ли пользователь в группе
+
+            # Check if user is in the group
             if user not in group.users:
-                logger.warning(f"Пользователь {telegram_id} не состоит в группе '{group.name}'")
+                logger.warning(f"User {telegram_id} is not in group '{group.name}'")
                 return False
-            
+
             group.users.remove(user)
             session.commit()
-            logger.info(f"Пользователь {telegram_id} удален из группы '{group.name}'")
+            logger.info(f"User {telegram_id} removed from group '{group.name}'")
             return True
-            
+
         except Exception as e:
             session.rollback()
-            logger.error(f"Ошибка при удалении пользователя из группы: {e}")
+            logger.error(f"Error removing user from group: {e}")
             raise
         finally:
             self.db_manager.close_session(session)
-    
-    def get_all_users(self) -> List[User]:
+
+    def get_all_users(self) -> List[dict]:
         """
-        Получение списка всех пользователей
-        
+        Get list of all users with group counts
+
         Returns:
-            Список всех пользователей
+            List of dictionaries with user data
         """
         session = self.db_manager.get_session()
         try:
             users = session.query(User).all()
-            logger.info(f"Получено {len(users)} пользователей")
-            return users
+            result = []
+            for user in users:
+                user_data = {
+                    "id": user.id,
+                    "telegram_id": user.telegram_id,
+                    "username": user.username,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "created_at": user.created_at,
+                    "updated_at": user.updated_at,
+                    "groups_count": len(user.groups),  # Access while session is active
+                }
+                result.append(user_data)
+            logger.info(f"Retrieved {len(users)} users")
+            return result
         except Exception as e:
-            logger.error(f"Ошибка при получении списка пользователей: {e}")
+            logger.error(f"Error getting user list: {e}")
             raise
         finally:
             self.db_manager.close_session(session)
-    
-    def get_user_by_telegram_id(self, telegram_id: int) -> Optional[User]:
+
+    def get_user_by_telegram_id(self, telegram_id: int) -> Optional[dict]:
         """
-        Получение пользователя по Telegram ID
-        
+        Get user by Telegram ID with group information
+
         Args:
-            telegram_id: Telegram ID пользователя
-            
+            telegram_id: User's Telegram ID
+
         Returns:
-            Пользователь или None если не найден
+            Dictionary with user data or None if not found
         """
         session = self.db_manager.get_session()
         try:
             user = session.query(User).filter(User.telegram_id == telegram_id).first()
-            return user
+            if not user:
+                return None
+
+            # Load related objects while session is active
+            groups = []
+            for group in user.groups:
+                groups.append(
+                    {
+                        "id": group.id,
+                        "name": group.name,
+                        "description": group.description,
+                    }
+                )
+
+            user_data = {
+                "id": user.id,
+                "telegram_id": user.telegram_id,
+                "username": user.username,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "created_at": user.created_at,
+                "updated_at": user.updated_at,
+                "groups": groups,
+                "groups_count": len(groups),
+            }
+
+            return user_data
         except Exception as e:
-            logger.error(f"Ошибка при получении пользователя: {e}")
+            logger.error(f"Error getting user: {e}")
             raise
         finally:
             self.db_manager.close_session(session)
-    
-    def create_user(self, telegram_id: int, username: str = None, 
-                   first_name: str = None, last_name: str = None) -> User:
+
+    def create_user(
+        self,
+        telegram_id: int,
+        username: str = None,
+        first_name: str = None,
+        last_name: str = None,
+    ) -> User:
         """
-        Создание нового пользователя
-        
+        Create new user
+
         Args:
-            telegram_id: Telegram ID пользователя
-            username: Имя пользователя в Telegram
-            first_name: Имя
-            last_name: Фамилия
-            
+            telegram_id: User's Telegram ID
+            username: Telegram username
+            first_name: First name
+            last_name: Last name
+
         Returns:
-            Созданный пользователь
-            
+            Created user
+
         Raises:
-            ValueError: Если пользователь с таким telegram_id уже существует
+            ValueError: If user with this telegram_id already exists
         """
         session = self.db_manager.get_session()
         try:
-            # Проверяем, существует ли пользователь с таким telegram_id
-            existing_user = session.query(User).filter(User.telegram_id == telegram_id).first()
+            # Check if user with this telegram_id already exists
+            existing_user = (
+                session.query(User).filter(User.telegram_id == telegram_id).first()
+            )
             if existing_user:
-                raise ValueError(f"Пользователь с telegram_id {telegram_id} уже существует")
-            
+                raise ValueError(f"User with telegram_id {telegram_id} already exists")
+
             user = User(
                 telegram_id=telegram_id,
                 username=username,
                 first_name=first_name,
-                last_name=last_name
+                last_name=last_name,
             )
             session.add(user)
             session.commit()
-            session.refresh(user)  # Обновляем объект после коммита
-            logger.info(f"Пользователь с telegram_id {telegram_id} создан успешно")
+            session.refresh(user)  # Refresh object after commit
+            logger.info(f"User with telegram_id {telegram_id} created successfully")
             return user
-            
+
         except Exception as e:
             session.rollback()
-            logger.error(f"Ошибка при создании пользователя: {e}")
+            logger.error(f"Error creating user: {e}")
             raise
         finally:
             self.db_manager.close_session(session)
-    
-    def get_all_groups(self) -> List[Group]:
+
+    def get_all_groups(self) -> List[dict]:
         """
-        Получение списка всех групп
-        
+        Get list of all groups with user counts
+
         Returns:
-            Список всех групп
+            List of dictionaries with group data
         """
         session = self.db_manager.get_session()
         try:
             groups = session.query(Group).all()
-            logger.info(f"Получено {len(groups)} групп")
-            return groups
+            result = []
+            for group in groups:
+                group_data = {
+                    "id": group.id,
+                    "name": group.name,
+                    "description": group.description,
+                    "created_at": group.created_at,
+                    "updated_at": group.updated_at,
+                    "users_count": len(group.users),  # Access while session is active
+                }
+                result.append(group_data)
+            logger.info(f"Retrieved {len(groups)} groups")
+            return result
         except Exception as e:
-            logger.error(f"Ошибка при получении списка групп: {e}")
+            logger.error(f"Error getting group list: {e}")
             raise
         finally:
             self.db_manager.close_session(session)
-    
+
     def get_group_by_id(self, group_id: int) -> Optional[dict]:
         """
-        Получение группы по ID
-        
+        Get group by ID
+
         Args:
-            group_id: ID группы
-            
+            group_id: Group ID
+
         Returns:
-            Словарь с данными группы или None если не найдена
+            Dictionary with group data or None if not found
         """
         session = self.db_manager.get_session()
         try:
             group = session.query(Group).filter(Group.id == group_id).first()
             if not group:
                 return None
-            
-            # Загружаем связанные объекты
+
+            # Load related objects
             users = []
             for user in group.users:
-                users.append({
-                    'id': user.id,
-                    'telegram_id': user.telegram_id,
-                    'username': user.username,
-                    'first_name': user.first_name,
-                    'last_name': user.last_name
-                })
-            
+                users.append(
+                    {
+                        "id": user.id,
+                        "telegram_id": user.telegram_id,
+                        "username": user.username,
+                        "first_name": user.first_name,
+                        "last_name": user.last_name,
+                    }
+                )
+
             group_data = {
-                'id': group.id,
-                'name': group.name,
-                'description': group.description,
-                'users': users,
-                'users_count': len(users),
-                'created_at': group.created_at,
-                'updated_at': group.updated_at
+                "id": group.id,
+                "name": group.name,
+                "description": group.description,
+                "users": users,
+                "users_count": len(users),
+                "created_at": group.created_at,
+                "updated_at": group.updated_at,
             }
-            
+
             return group_data
         except Exception as e:
-            logger.error(f"Ошибка при получении группы: {e}")
+            logger.error(f"Error getting group: {e}")
             raise
         finally:
             self.db_manager.close_session(session)
-    
-    def get_group_by_name(self, name: str) -> Optional[Group]:
+
+    def get_group_by_name(self, name: str) -> Optional[dict]:
         """
-        Получение группы по названию
-        
+        Get group by name with user information
+
         Args:
-            name: Название группы
-            
+            name: Group name
+
         Returns:
-            Группа или None если не найдена
+            Dictionary with group data or None if not found
         """
         session = self.db_manager.get_session()
         try:
             group = session.query(Group).filter(Group.name == name).first()
-            return group
+            if not group:
+                return None
+
+            # Load related objects while session is active
+            users = []
+            for user in group.users:
+                users.append(
+                    {
+                        "id": user.id,
+                        "telegram_id": user.telegram_id,
+                        "username": user.username,
+                        "first_name": user.first_name,
+                        "last_name": user.last_name,
+                    }
+                )
+
+            group_data = {
+                "id": group.id,
+                "name": group.name,
+                "description": group.description,
+                "users": users,
+                "users_count": len(users),
+                "created_at": group.created_at,
+                "updated_at": group.updated_at,
+            }
+
+            return group_data
         except Exception as e:
-            logger.error(f"Ошибка при получении группы: {e}")
+            logger.error(f"Error getting group: {e}")
             raise
         finally:
-            self.db_manager.close_session(session) 
+            self.db_manager.close_session(session)

@@ -5,6 +5,8 @@ import envs
 from storage import Storage
 from user import User, Token
 from agent import get_agent
+from database import GroupDatabase
+from database import db_config
 
 from telegram import Update
 from telegram.ext import (
@@ -21,6 +23,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+# Initialize database
+try:
+    group_db = GroupDatabase(db_config.url)
+    logger.info("Database initialized successfully")
+except Exception as e:
+    logger.error(f"Failed to initialize database: {e}")
+    raise
 
 db_session = Storage().build_session().session
 

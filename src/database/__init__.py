@@ -7,12 +7,12 @@ from .database import GroupDatabase, DatabaseManager
 from .config import DatabaseConfig, db_config
 
 __all__ = [
-    'Base',
-    'Group', 
-    'User',
-    'group_user_association',
-    'GroupDatabase',
-    'DatabaseManager',
-    'DatabaseConfig',
-    'db_config'
-] 
+    "Base",
+    "Group",
+    "User",
+    "group_user_association",
+    "GroupDatabase",
+    "DatabaseManager",
+    "DatabaseConfig",
+    "db_config",
+]
