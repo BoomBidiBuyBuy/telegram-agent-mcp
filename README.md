@@ -16,7 +16,7 @@ A Telegram bot with LLM agent capabilities, integrated with MCP (Model Context P
 
 ```bash
 # Copy environment template
-cp env.example .env
+cp .env.example .env
 
 # Edit .env with your configuration
 # - TELEGRAM_BOT_TOKEN
