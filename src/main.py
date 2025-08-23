@@ -2,11 +2,11 @@ import logging
 import uuid
 
 import envs
-from storage import Storage
-from user import User, Token
+from storage import SessionLocal
+from token_auth_db.models import AuthToken, AuthUser
 from agent import get_agent
-from database import GroupDatabase
-from database import db_config
+from user_group_db import GroupDatabase
+from user_group_db.config import db_config
 
 from telegram import Update
 from telegram.ext import (
@@ -26,14 +26,14 @@ logger = logging.getLogger(__name__)
 
 
 # Initialize database
-try:
-    group_db = GroupDatabase(db_config.url)
-    logger.info("Database initialized successfully")
-except Exception as e:
-    logger.error(f"Failed to initialize database: {e}")
-    raise
+#try:
+#    group_db = GroupDatabase(db_config.url)
+#    logger.info("Database initialized successfully")
+#except Exception as e:
+#  logger.error(f"Failed to initialize database: {e}")
+#   raise
 
-db_session = Storage().build_session().session
+
 
 
 # Define command handlers
@@ -65,47 +65,47 @@ async def token_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     if context.args:
         passed_token = context.args[0]
 
-        token = Token.find_by_id(passed_token, db_session)
+        with SessionLocal() as db_session:
+            token = AuthToken.find_by_id(passed_token, db_session)
 
-        if not token:
-            logger.warning(
-                f"user='{user_id}' passed token='{passed_token}', and I can not find active token in storage"
-            )
-            await update.message.reply_text(
-                "Passed token is not valid, please check that it is correct"
-            )
-            return
-
-        if not token.user:
-            logger.info(
-                "token has no user: either a new user or new token not assigned to the user"
-            )
-
-            user = User.find_by_id(user_id, db_session)
-
-            if not user:
-                logger.info("New user case")
-                token.user = User.create(user_id, username, db_session)
-            else:
-                if passed_token not in {t.id for t in user.tokens}:
-                    logger.info("Add token to a user tokens")
-                    user.tokens.append(token)
-                else:
-                    logger.info("Nothing to do, token already registered")
-        else:
-            logger.info("Token already has an user, try to check")
-
-            if token.user_id == user_id:
-                logger.info("Token belongs to the same user, everything is Ok")
-            else:
+            if not token:
                 logger.warning(
-                    f"Command executed by '{user_id}', however token belongs to '{token.user_id}'"
+                    f"user='{user_id}' passed token='{passed_token}', and I can not find active token in storage"
                 )
                 await update.message.reply_text(
                     "Passed token is not valid, please check that it is correct"
                 )
                 return
 
+            if not token.user:
+                logger.info(
+                    "token has no user: either a new user or new token not assigned to the user"
+                )
+
+                user = AuthUser.find_by_id(user_id, db_session)
+
+                if not user:
+                    logger.info("New user case")
+                    token.user = AuthUser.create(user_id, username, db_session)
+                else:
+                    if passed_token not in {t.id for t in user.tokens}:
+                        logger.info("Add token to a user tokens")
+                        user.tokens.append(token)
+                    else:
+                        logger.info("Nothing to do, token already registered")
+            else:
+                logger.info("Token already has an user, try to check")
+
+                if token.user_id == user_id:
+                    logger.info("Token belongs to the same user, everything is Ok")
+                else:
+                    logger.warning(
+                        f"Command executed by '{user_id}', however token belongs to '{token.user_id}'"
+                    )
+                    await update.message.reply_text(
+                        "Passed token is not valid, please check that it is correct"
+                    )
+                    return
     else:
         logger.warning(f"No parameters passed to the token command by user='{user_id}'")
         await update.message.reply_text(

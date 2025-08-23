@@ -6,13 +6,6 @@ import envs
 # import src.envs as envs
 
 
-def test_singletone_traits(mocker):
-    instance1 = storage.Storage()
-    instance2 = storage.Storage()
-
-    assert id(instance1) == id(instance2)
-
-
 @pytest.mark.parametrize(
     "storage_kind,expected_url",
     [
@@ -30,14 +23,18 @@ def test_storage_endpoint(mocker, storage_kind, expected_url):
     mocker.patch("envs.PG_PORT", "port")
 
     mocker.patch("storage.create_engine")
+    mocker.patch("storage.sessionmaker")
 
-    storage.Storage()
+    storage.get_engine_and_sessionmaker()
 
-    storage.create_engine.assert_called_once_with(expected_url, echo=envs.DEBUG_MODE)
+    if expected_url.startswith("sqlite"):
+        connect_args = {"check_same_thread": False}
+    else:
+        connect_args = {}
 
+    storage.create_engine.assert_called_once_with(
+        expected_url,
+        echo=False,
+        connect_args=connect_args
+    )
 
-def test_session(mocker):
-    instance = storage.Storage()
-
-    with instance.build_session():
-        pass
