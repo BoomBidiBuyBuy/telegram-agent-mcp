@@ -16,6 +16,7 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
+from langchain_core.messages import SystemMessage, HumanMessage
 
 
 logging.basicConfig(
@@ -129,7 +130,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         # Process the message with MemoryCheckpoint (automatically handles conversation history)
         logger.info(f"Processing message for thread: {thread_id}")
         result = await agent.ainvoke(
-            {"messages": [{"role": "user", "content": message_text}]},
+            {
+                "messages": [
+                    SystemMessage(
+                        content="If you call any tool and are not sure about some parameters, ask the user for clarification."
+                    ),
+                    HumanMessage(content=message_text),
+                ]
+            },
             config={"configurable": {"thread_id": thread_id}},
         )
         logger.info(f"Agent result: {result}")
