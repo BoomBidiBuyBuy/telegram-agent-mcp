@@ -1,9 +1,12 @@
 import logging
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 import envs
 from fastmcp import FastMCP
 
-from mcp.manage_user_groups import create_group, delete_group, add_user_to_group, remove_user_from_group, create_user, get_all_groups, get_group_by_id, get_group_by_name, get_all_users, get_user_by_telegram_id
-from mcp.telegram import send_message_to_user
+from mcp_utils.manage_user_groups import create_group, delete_group, add_user_to_group, remove_user_from_group, create_user, get_all_groups, get_group_by_id, get_group_by_name, get_all_users, get_user_by_telegram_id
+from mcp_utils.telegram_utils import send_message_to_user
 
 logger = logging.getLogger(__name__)
 

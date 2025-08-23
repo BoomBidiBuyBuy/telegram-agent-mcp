@@ -45,7 +45,7 @@ async def create_group(
         group = group_db.create_group(
             name=name, user_ids=user_ids, description=description
         )
-        result = f"Group '{name}' created successfully with ID: {group.id}"
+        result = f"Group '{name}' created successfully with ID: {group['id']}"
         if user_ids:
             result += f"\nAdded {len(user_ids)} users to the group"
         return result
@@ -176,19 +176,19 @@ async def get_group_by_id(group_id: int) -> str:
             return f"Group with ID {group_id} not found"
 
         result = "Group Details:\n"
-        result += f"- ID: {group.id}\n"
-        result += f"- Name: '{group.name}'\n"
-        if group.description:
-            result += f"- Description: '{group.description}'\n"
-        result += f"- Created: {group.created_at}\n"
-        result += f"- Users ({len(group.users)}):\n"
+        result += f"- ID: {group['id']}\n"
+        result += f"- Name: '{group['name']}'\n"
+        if group['description']:
+            result += f"- Description: '{group['description']}'\n"
+        result += f"- Created: {group['created_at']}\n"
+        result += f"- Users ({group['users_count']}):\n"
 
-        for user in group.users:
-            result += f"  * {user.telegram_id}"
-            if user.username:
-                result += f" (@{user.username})"
-            if user.first_name or user.last_name:
-                result += f" - {user.first_name or ''} {user.last_name or ''}".strip()
+        for user in group['users']:
+            result += f"  * {user['telegram_id']}"
+            if user['username']:
+                result += f" (@{user['username']})"
+            if user['first_name'] or user['last_name']:
+                result += f" - {user['first_name'] or ''} {user['last_name'] or ''}".strip()
             result += "\n"
 
         return result

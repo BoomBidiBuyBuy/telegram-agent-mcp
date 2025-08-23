@@ -5,13 +5,10 @@ from typing import Union
 from sqlalchemy import Column, Integer, String, ForeignKey, Table, Index, select
 from sqlalchemy.orm import relationship
 
-import storage
+from storage import Base
 
 
 logger = logging.getLogger(__name__)
-
-
-Base = storage.Base
 
 
 class AuthUser(Base):

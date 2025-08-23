@@ -18,8 +18,7 @@ def build_database_url() -> str:
             logger.warning(
                 "The `mysql` is used as storage db! Use it ONLY for development"
             )
-        return "sqlite:///:memory:"
-        #return "sqlite:///./dev.db"
+        return "sqlite:///./dev.db"
     elif envs.STORAGE_DB == "postgres":
         logger.info("The `postgres` is used as storage db")
         return f"postgresql+psycopg2://{envs.PG_USER}:{envs.PG_PASSWORD}@{envs.PG_HOST}:{envs.PG_PORT}/telegram_bot"
@@ -58,5 +57,4 @@ def get_db_session(SessionLocal: sessionmaker) -> Callable:
 
 
 engine, SessionLocal = get_engine_and_sessionmaker()
-init_db(engine)
 get_db = get_db_session(SessionLocal)

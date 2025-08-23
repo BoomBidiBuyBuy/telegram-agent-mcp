@@ -5,8 +5,6 @@ import envs
 from storage import SessionLocal
 from token_auth_db.models import AuthToken, AuthUser
 from agent import get_agent
-from user_group_db import GroupDatabase
-from user_group_db.config import db_config
 
 from telegram import Update
 from telegram.ext import (
@@ -167,6 +165,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 def main():
     """Starts the bot."""
+    # Initialize database
+    from storage import init_db, engine
+    init_db(engine)
+    logger.info("Database initialized successfully")
+    
     application = Application.builder().token(envs.TELEGRAM_BOT_TOKEN).build()
 
     # Add handlers

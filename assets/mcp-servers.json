@@ -1,12 +1,8 @@
 {
     "mcpServers": {
-        "ReplyService": {
+        "MCPService": {
             "transport": "streamable_http",
-            "url": "http://${REPLY_SERVICE_MCP_HOST}:${REPLY_SERVICE_MCP_PORT}/mcp/"
-        },
-        "DatabaseService": {
-            "transport": "streamable_http",
-            "url": "http://${DATABASE_SERVICE_MCP_HOST}:${DATABASE_SERVICE_MCP_PORT}/mcp/"
+            "url": "http://${MCP_HOST}:${MCP_PORT}/mcp/"
         }
     }
 }
