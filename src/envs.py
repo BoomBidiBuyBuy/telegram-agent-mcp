@@ -1,27 +1,15 @@
 import os
 
-
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 
 # tests set 1 by default in conftest.py
 # it add more output, for example SQL queries to db
 DEBUG_MODE = bool(int(os.environ.get("DEBUG_MODE", 0)))
 
-STORAGE_DB = os.environ.get("STORAGE_DB", "mysql")
+STORAGE_DB = os.environ.get("STORAGE_DB", "sqlite-memory")
 
-########################
-# fastmcp server url #
-########################
-MCP_SERVER_URL = os.environ.get("MCP_SERVER_URL", "http://localhost:8080/mcp/")
-MCP_SERVER_TRANSPORT = os.environ.get("MCP_SERVER_TRANSPORT", "streamable_http")
-# path to mcp servers json file (used by loader in agent)
-MCP_SERVERS_FILE_PATH = os.environ.get("MCP_SERVERS_FILE_PATH", "mcp-servers.json")
-
-#############################
-# Reply Service MCP settings #
-#############################
-REPLY_SERVICE_MCP_HOST = os.environ.get("REPLY_SERVICE_MCP_HOST", "0.0.0.0")
-REPLY_SERVICE_MCP_PORT = int(os.environ.get("REPLY_SERVICE_MCP_PORT", "8091"))
+# endpoint where the agentic-worker lives
+AGENT_ENDPOINT = os.environ.get("AGENT_ENDPOINT")
 
 ############
 # postgres #
@@ -44,6 +32,10 @@ WEBHOOK_PORT = os.environ.get("WEBHOOK_PORT", os.environ.get("PORT", 8443))
 
 # webhook url to get messages
 WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
+
+# ip / domain that listens for webhooks
+WEBHOOK_LISTEN = os.environ.get("WEBHOOK_LISTEN")
+
 
 # path to the private.key
 # can be optional if set on a proxy

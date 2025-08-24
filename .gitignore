@@ -3,3 +3,4 @@ __pycache__
 .*\.swp
 *.pem
 *.key
+dev.db

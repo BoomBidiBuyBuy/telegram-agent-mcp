@@ -3,7 +3,7 @@ import pytest
 
 from unittest.mock import ANY
 from main import token_command
-from user import User, Token
+from token_auth_db.models import AuthUser, AuthToken
 
 import telegram
 from telegram.ext import ContextTypes
@@ -60,19 +60,19 @@ async def test_non_existed_token(update, context, mocker, caplog):
 async def test_new_user(update, context, mocker):
     """Check case with new token but when user is not registered yet.
     In that case new user is created"""
-    token = mocker.Mock(spec=Token)
+    token = mocker.Mock(spec=AuthToken)
     token.id = "token1234"
     token.user = None
 
     context.args.append(token.id)
 
-    mocker.patch("user.Token.find_by_id", return_value=token)
-    mocker.patch("user.User.find_by_id", return_value=None)
-    mocker.patch("user.User.create")
+    mocker.patch("token_auth_db.models.AuthToken.find_by_id", return_value=token)
+    mocker.patch("token_auth_db.models.AuthUser.find_by_id", return_value=None)
+    mocker.patch("token_auth_db.models.AuthUser.create")
 
     await token_command(update, context)
 
-    User.create.assert_called_once_with(
+    AuthUser.create.assert_called_once_with(
         update.effective_user.id,
         update.effective_user.username,
         ANY,  # it's session, we don't have access to check
@@ -85,20 +85,20 @@ async def test_existing_user(update, context, mocker, caplog):
     In that case new token is appended to other user's tokens"""
     caplog.set_level(logging.INFO)
 
-    user = mocker.Mock(spec=User)
+    user = mocker.Mock(spec=AuthUser)
     user.id = "tg1234"
     user.name = "Alice"
     user.tokens = []
 
-    token = mocker.Mock(spec=Token)
+    token = mocker.Mock(spec=AuthToken)
     token.id = "token1234"
     token.user = None
 
     context.args.append(token.id)
 
-    mocker.patch("user.Token.find_by_id", return_value=token)
-    mocker.patch("user.User.find_by_id", return_value=user)
-    mocker.patch("user.User.create")
+    mocker.patch("token_auth_db.models.AuthToken.find_by_id", return_value=token)
+    mocker.patch("token_auth_db.models.AuthUser.find_by_id", return_value=user)
+    mocker.patch("token_auth_db.models.AuthUser.create")
 
     await token_command(update, context)
 
@@ -107,7 +107,7 @@ async def test_existing_user(update, context, mocker, caplog):
 
     # check case when user already as token
     user.tokens = [token]
-    mocker.patch("user.User.find_by_id", return_value=user)
+    mocker.patch("token_auth_db.models.AuthUser.find_by_id", return_value=user)
 
     await token_command(update, context)
 
@@ -120,26 +120,26 @@ async def test_assigned_user(update, context, mocker, caplog):
     In that case new we check matching current usser with assigned"""
     caplog.set_level(logging.INFO)
 
-    alice = mocker.Mock(spec=User)
+    alice = mocker.Mock(spec=AuthUser)
     alice.id = "tg1234"
     alice.name = "Alice"
     alice.tokens = []
 
-    bob = mocker.Mock(spec=User)
+    bob = mocker.Mock(spec=AuthUser)
     bob.id = "tg5678"
     bob.name = "Bob"
     bob.tokens = []
 
-    token = mocker.Mock(spec=Token)
+    token = mocker.Mock(spec=AuthToken)
     token.id = "token1234"
     token.user_id = alice.id
     token.user = alice
 
     context.args.append(token.id)
 
-    mocker.patch("user.Token.find_by_id", return_value=token)
-    mocker.patch("user.User.find_by_id", return_value=alice)
-    mocker.patch("user.User.create")
+    mocker.patch("token_auth_db.models.AuthToken.find_by_id", return_value=token)
+    mocker.patch("token_auth_db.models.AuthUser.find_by_id", return_value=alice)
+    mocker.patch("token_auth_db.models.AuthUser.create")
 
     await token_command(update, context)
 
@@ -148,7 +148,7 @@ async def test_assigned_user(update, context, mocker, caplog):
     # change assigned user to Bob
     token.user_id = bob.id
     token.user = bob
-    mocker.patch("user.Token.find_by_id", return_value=token)
+    mocker.patch("token_auth_db.models.AuthToken.find_by_id", return_value=token)
 
     await token_command(update, context)
 

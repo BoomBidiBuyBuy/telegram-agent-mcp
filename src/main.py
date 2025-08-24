@@ -2,9 +2,10 @@ import logging
 import uuid
 
 import envs
-from storage import Storage
-from user import User, Token
-from agent import get_agent
+from storage import SessionLocal
+from token_auth_db.models import AuthToken, AuthUser
+
+import httpx
 
 from telegram import Update
 from telegram.ext import (
@@ -22,9 +23,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-db_session = Storage().build_session().session
-
-
 # Define command handlers
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Sends a welcome message when the /start command is issued."""
@@ -34,12 +32,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     welcome_message = "Hello! I am your LLM agent MCP bot. Send me a message!"
     await update.message.reply_text(welcome_message)
-
-
-# for debugging and testing purposes
-# async def add_token_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-#    token_id = context.args[0]
-#    Token.create(token_id, db_session)
 
 
 async def token_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -54,47 +46,47 @@ async def token_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     if context.args:
         passed_token = context.args[0]
 
-        token = Token.find_by_id(passed_token, db_session)
+        with SessionLocal() as db_session:
+            token = AuthToken.find_by_id(passed_token, db_session)
 
-        if not token:
-            logger.warning(
-                f"user='{user_id}' passed token='{passed_token}', and I can not find active token in storage"
-            )
-            await update.message.reply_text(
-                "Passed token is not valid, please check that it is correct"
-            )
-            return
-
-        if not token.user:
-            logger.info(
-                "token has no user: either a new user or new token not assigned to the user"
-            )
-
-            user = User.find_by_id(user_id, db_session)
-
-            if not user:
-                logger.info("New user case")
-                token.user = User.create(user_id, username, db_session)
-            else:
-                if passed_token not in {t.id for t in user.tokens}:
-                    logger.info("Add token to a user tokens")
-                    user.tokens.append(token)
-                else:
-                    logger.info("Nothing to do, token already registered")
-        else:
-            logger.info("Token already has an user, try to check")
-
-            if token.user_id == user_id:
-                logger.info("Token belongs to the same user, everything is Ok")
-            else:
+            if not token:
                 logger.warning(
-                    f"Command executed by '{user_id}', however token belongs to '{token.user_id}'"
+                    f"user='{user_id}' passed token='{passed_token}', and I can not find active token in storage"
                 )
                 await update.message.reply_text(
                     "Passed token is not valid, please check that it is correct"
                 )
                 return
 
+            if not token.user:
+                logger.info(
+                    "token has no user: either a new user or new token not assigned to the user"
+                )
+
+                user = AuthUser.find_by_id(user_id, db_session)
+
+                if not user:
+                    logger.info("New user case")
+                    token.user = AuthUser.create(user_id, username, db_session)
+                else:
+                    if passed_token not in {t.id for t in user.tokens}:
+                        logger.info("Add token to a user tokens")
+                        user.tokens.append(token)
+                    else:
+                        logger.info("Nothing to do, token already registered")
+            else:
+                logger.info("Token already has an user, try to check")
+
+                if token.user_id == user_id:
+                    logger.info("Token belongs to the same user, everything is Ok")
+                else:
+                    logger.warning(
+                        f"Command executed by '{user_id}', however token belongs to '{token.user_id}'"
+                    )
+                    await update.message.reply_text(
+                        "Passed token is not valid, please check that it is correct"
+                    )
+                    return
     else:
         logger.warning(f"No parameters passed to the token command by user='{user_id}'")
         await update.message.reply_text(
@@ -110,34 +102,24 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     logger.info(f"User {user_id} sent message: {message_text}")
 
     try:
-        # Get or initialize the agent
-        agent = await get_agent()
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            url = f"{envs.AGENT_ENDPOINT}/message"
+            payload = {
+                "message": message_text,
+                "thread_id": f"user_{user_id}",
+            }
+            response = await client.post(url, json=payload)
 
-        # Create thread_id for this user (MemoryCheckpoint uses thread_id to separate conversations)
-        thread_id = f"user_{user_id}"
-
-        # Process the message with MemoryCheckpoint (automatically handles conversation history)
-        logger.info(f"Processing message for thread: {thread_id}")
-        result = await agent.ainvoke(
-            {"messages": [{"role": "user", "content": message_text}]},
-            config={"configurable": {"thread_id": thread_id}},
-        )
-        logger.info(f"Agent result: {result}")
-
-        # Get the response
-        if result and "messages" in result and result["messages"]:
-            response = (
-                result["messages"][-1].content
-                if hasattr(result["messages"][-1], "content")
-                else str(result["messages"][-1])
-            )
-            logger.info(f"Response content: {response}")
-        else:
-            response = "Sorry, I couldn't process your message."
-            logger.warning("No response from agent")
-
-        await update.message.reply_text(response)
-
+            if response.status_code == 200:
+                response_data = response.json()
+                logger.info(f"Worker response: {response_data}")
+                await update.message.reply_text(response_data["message"])
+            else:
+                logger.error(f"Worker error: {response.status_code} {response.text}")
+                await update.message.reply_text(
+                    "Sorry, there was an error processing your message."
+                )
+                return
     except Exception as e:
         logger.error(f"Error processing message: {e}")
         import traceback
@@ -147,8 +129,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await update.message.reply_text(error_message)
 
 
-def main():
+def run_bot():
     """Starts the bot."""
+    # Initialize database
+    from storage import init_db, engine
+
+    init_db(engine)
+    logger.info("Database initialized successfully")
+
     application = Application.builder().token(envs.TELEGRAM_BOT_TOKEN).build()
 
     # Add handlers
@@ -173,7 +161,7 @@ def main():
             ext_params["cert"] = envs.SSL_CERT_PATH
 
         application.run_webhook(
-            listen="0.0.0.0",
+            listen=envs.WEBHOOK_LISTEN,
             secret_token=uuid.uuid4().hex,
             port=envs.WEBHOOK_PORT,
             webhook_url=envs.WEBHOOK_URL,
@@ -186,4 +174,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    run_bot()

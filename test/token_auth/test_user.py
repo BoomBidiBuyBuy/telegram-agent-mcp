@@ -2,52 +2,54 @@ import pytest
 
 from sqlalchemy import select
 
-from storage import Storage
-from user import User, Token, Action
+from storage import SessionLocal, init_db, engine, Base
+from token_auth_db.models import AuthUser, AuthToken, AuthAction
 
 
 @pytest.fixture
-def storage():
-    return Storage()
-
-
-@pytest.fixture
-def session(storage):
-    with storage.build_session() as session:
+def session():
+    with SessionLocal() as session:
         yield session
+
+    # need to drop all tables after each test
+    # and re-create them
+    # otherwise data from previous test will be
+    # present in the next test
+    Base.metadata.drop_all(bind=engine)
+    init_db(engine)
 
 
 def test_user(session):
     """Check that the User table functioning without errors"""
 
-    User.create("tgabcd", "Alice", session)
-    User.create("tg1234", "Bob", session)
+    AuthUser.create(user_id="tgabcd", username="Alice", session=session)
+    AuthUser.create(user_id="tg1234", username="Bob", session=session)
     session.commit()
 
-    user = User.find_by_id("tgabcd", session)
+    user = AuthUser.find_by_id("tgabcd", session)
     assert user.name == "Alice"
 
-    user = User.find_by_id("tgxxxx", session)
+    user = AuthUser.find_by_id("tgxxxx", session)
     assert user is None
 
-    assert User.exists("tg1234", session)
-    assert not User.exists("tg5678", session)
+    assert AuthUser.exists("tg1234", session)
+    assert not AuthUser.exists("tg5678", session)
 
 
 def test_token(session):
     """Check that the Token table functioning without errors"""
-    user1 = User(id="tgabcd", name="Alice")
-    user2 = User(id="tg1234", name="Bob")
+    user1 = AuthUser(id="tgabcd", name="Alice")
+    user2 = AuthUser(id="tg1234", name="Bob")
 
-    Token(id="token123", user=user1)
-    Token(id="token345", user=user1)
-    Token(id="token567", user=user2)
+    AuthToken(id="token123", user=user1)
+    AuthToken(id="token345", user=user1)
+    AuthToken(id="token567", user=user2)
 
     session.add_all([user1, user2])
     session.commit()
 
-    alice = User.find_by_id("tgabcd", session)
-    bob = User.find_by_id("tg1234", session)
+    alice = AuthUser.find_by_id("tgabcd", session)
+    bob = AuthUser.find_by_id("tg1234", session)
 
     alice_tokens = {token.id for token in alice.tokens}
     bob_tokens = {token.id for token in bob.tokens}
@@ -61,7 +63,7 @@ def test_token(session):
     assert bob.revoke_token("token567", session)  # returns true in success
     session.commit()
 
-    bob = User.find_by_id("tg1234", session)
+    bob = AuthUser.find_by_id("tg1234", session)
     assert len(bob.tokens) == 0
 
     assert not bob.revoke_token("token567", session)  # already revoken
@@ -73,24 +75,24 @@ def test_standalone_token(session):
     do not know the user yet"""
 
     # check that token not yet created
-    assert not Token.exists("token123", session)
+    assert not AuthToken.exists("token123", session)
 
     # check token creation
-    token = Token(id="token123")
+    token = AuthToken(id="token123")
 
     session.add_all([token])
     session.commit()
 
-    assert Token.exists("token123", session)
+    assert AuthToken.exists("token123", session)
 
     # check assigning user to a token
-    token = Token.find_by_id("token123", session)
-    user = User(id="tg1234", name="Alice")
+    token = AuthToken.find_by_id("token123", session)
+    user = AuthUser(id="tg1234", name="Alice")
 
     token.user = user
     session.commit()
 
-    assert User.find_by_id("tg1234", session).tokens[0].id == "token123"
+    assert AuthUser.find_by_id("tg1234", session).tokens[0].id == "token123"
 
 
 def test_action(session):
@@ -99,16 +101,20 @@ def test_action(session):
     - actions cen be removed
     - token revokation also remove corresponding actions from users abilities
     """
-    user1 = User(id="tgabcd", name="Alice")
-    user2 = User(id="tg1234", name="Bob")
+    user1 = AuthUser(id="tgabcd", name="Alice")
+    user2 = AuthUser(id="tg1234", name="Bob")
 
-    token1 = Token(id="token123", user=user1)
-    token2 = Token(id="token345", user=user1)
-    token3 = Token(id="token567", user=user2)
+    token1 = AuthToken(id="token123", user=user1)
+    token2 = AuthToken(id="token345", user=user1)
+    token3 = AuthToken(id="token567", user=user2)
 
-    action_pg_read = Action(name="postgres_read", description="Postgres read access")
-    action_pg_write = Action(name="postgres_write", description="Postgres write access")
-    action_airflow_read = Action(name="airflow_read", description="Airflow read")
+    action_pg_read = AuthAction(
+        name="postgres_read", description="Postgres read access"
+    )
+    action_pg_write = AuthAction(
+        name="postgres_write", description="Postgres write access"
+    )
+    action_airflow_read = AuthAction(name="airflow_read", description="Airflow read")
 
     token1.actions.extend([action_pg_read, action_pg_write])
     token2.actions.append(action_airflow_read)
@@ -119,10 +125,10 @@ def test_action(session):
 
     # whether user has action
     stmt = (
-        select(Token)
-        .join(Token.user)
-        .join(Token.actions)
-        .where(User.id == "tg1234", Action.name == "airflow_read")
+        select(AuthToken)
+        .join(AuthToken.user)
+        .join(AuthToken.actions)
+        .where(AuthUser.id == "tg1234", AuthAction.name == "airflow_read")
         .limit(1)
     )
 
@@ -132,7 +138,9 @@ def test_action(session):
     # Add action for Bob
     ####################
     token = (
-        session.query(Token).filter_by(user_id="tg1234", id="token567").one_or_none()
+        session.query(AuthToken)
+        .filter_by(user_id="tg1234", id="token567")
+        .one_or_none()
     )
     token.actions.append(action_airflow_read)
     session.commit()
@@ -142,7 +150,7 @@ def test_action(session):
     ################
     # Remove action
     ################
-    action = session.query(Action).filter_by(name="airflow_read").one_or_none()
+    action = session.query(AuthAction).filter_by(name="airflow_read").one_or_none()
     token.actions.remove(action)
     session.commit()
 
@@ -154,10 +162,10 @@ def test_action(session):
 
     # check initial state
     stmt = (
-        select(Action)
-        .join(Token.actions)
-        .join(Token.user)
-        .where(Token.user_id == "tgabcd")
+        select(AuthAction)
+        .join(AuthToken.actions)
+        .join(AuthToken.user)
+        .where(AuthToken.user_id == "tgabcd")
         .distinct()
     )
 
@@ -177,10 +185,10 @@ def test_action(session):
 
     # check that Bob still able to tun 'postgres_read'
     stmt = (
-        select(Action)
-        .join(Token.actions)
-        .join(Token.user)
-        .where(Token.user_id == "tg1234")
+        select(AuthAction)
+        .join(AuthToken.actions)
+        .join(AuthToken.user)
+        .where(AuthToken.user_id == "tg1234")
         .distinct()
     )
 
