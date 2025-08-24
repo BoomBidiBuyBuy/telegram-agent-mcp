@@ -96,28 +96,3 @@ uv run pytest -v
 # Run specific test file
 uv run pytest test/test_database.py
 ```
-
-## Project Structure
-
-```
-telegram-agent-mcp/
-├── mcp_servers/               # MCP services
-│   ├── reply_service/         # Telegram message sending
-│   └── database_service/      # Database operations
-├── src/                       # Core application
-│   ├── agent.py              # LLM agent with MCP integration
-│   ├── main.py               # Telegram bot main application
-│   ├── database/             # Database module
-│   │   ├── __init__.py       # Module exports
-│   │   ├── database.py       # Database operations
-│   │   ├── models.py         # SQLAlchemy models
-│   │   └── config.py         # Database configuration
-│   ├── models.py             # Legacy models (deprecated)
-│   ├── config.py             # Legacy config (deprecated)
-│   ├── storage.py            # Storage management
-│   ├── user.py               # User management
-│   └── envs.py               # Environment variables
-├── assets/
-│   └── mcp-servers.json      # MCP services configuration
-└── run.sh                    # Startup script
-```
