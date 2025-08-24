@@ -61,7 +61,9 @@ class Group(Base):
         users_count = 0
         if user_ids:
             for telegram_id in user_ids:
-                user = session.query(User).filter(User.telegram_id == telegram_id).first()
+                user = (
+                    session.query(User).filter(User.telegram_id == telegram_id).first()
+                )
                 if user:
                     group.users.append(user)
                     users_count += 1
@@ -240,7 +242,9 @@ class User(Base):
         last_name: Optional[str] = None,
     ) -> "User":
         """Create a new user. Raises ValueError if telegram_id exists."""
-        existing_user = session.query(cls).filter(cls.telegram_id == telegram_id).first()
+        existing_user = (
+            session.query(cls).filter(cls.telegram_id == telegram_id).first()
+        )
         if existing_user:
             raise ValueError(f"User with telegram_id {telegram_id} already exists")
         user = cls(

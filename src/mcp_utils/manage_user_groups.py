@@ -7,16 +7,19 @@ from storage import SessionLocal
 logger = logging.getLogger(__name__)
 
 
-
 async def create_group(
     name: Annotated[str, "Name of the group"],
-    user_ids: Annotated[Optional[List[int]], "List of Telegram user IDs to add to the group"] = None,
-    description: Annotated[Optional[str], "Description of the group"] = None
+    user_ids: Annotated[
+        Optional[List[int]], "List of Telegram user IDs to add to the group"
+    ] = None,
+    description: Annotated[Optional[str], "Description of the group"] = None,
 ) -> str:
     """Create a new group with optional users and description."""
-    logger.info(f"Creating group: {name}, user_ids: {user_ids}, description: {description}")
+    logger.info(
+        f"Creating group: {name}, user_ids: {user_ids}, description: {description}"
+    )
 
-    try:    
+    try:
         with SessionLocal() as session:
             group = Group.create(
                 name=name, user_ids=user_ids, description=description, session=session
@@ -47,7 +50,10 @@ async def delete_group(group_id: Annotated[int, "ID of the group to delete"]) ->
         return f"Database error: {str(e)}"
 
 
-async def add_user_to_group(group_id: Annotated[int, "ID of the group"], telegram_id: Annotated[int, "Telegram ID of the user to add"]) -> str:
+async def add_user_to_group(
+    group_id: Annotated[int, "ID of the group"],
+    telegram_id: Annotated[int, "Telegram ID of the user to add"],
+) -> str:
     """Add a user to a group."""
     logger.info(f"Adding user {telegram_id} to group {group_id}")
     try:
@@ -62,7 +68,10 @@ async def add_user_to_group(group_id: Annotated[int, "ID of the group"], telegra
         return f"Database error: {str(e)}"
 
 
-async def remove_user_from_group(group_id: Annotated[int, "ID of the group"], telegram_id: Annotated[int, "Telegram ID of the user to remove"]) -> str:
+async def remove_user_from_group(
+    group_id: Annotated[int, "ID of the group"],
+    telegram_id: Annotated[int, "Telegram ID of the user to remove"],
+) -> str:
     """Remove a user from a group."""
     logger.info(f"Removing user {telegram_id} from group {group_id}")
     try:
@@ -79,21 +88,25 @@ async def remove_user_from_group(group_id: Annotated[int, "ID of the group"], te
 
 async def create_user(
     telegram_id: Annotated[int, "Telegram ID of the user to create"],
-    username: Annotated[Optional[str], "Telegram username of the user to create"] = None,
+    username: Annotated[
+        Optional[str], "Telegram username of the user to create"
+    ] = None,
     first_name: Annotated[Optional[str], "First name of the user to create"] = None,
     last_name: Annotated[Optional[str], "Last name of the user to create"] = None,
 ) -> str:
     """Create a new user in the database."""
-    logger.info(f"Creating user: {telegram_id}, username: {username}, first_name: {first_name}, last_name: {last_name}")
+    logger.info(
+        f"Creating user: {telegram_id}, username: {username}, first_name: {first_name}, last_name: {last_name}"
+    )
     try:
         with SessionLocal() as session:
             user = User.create(
-            telegram_id=telegram_id,
-            username=username,
-            first_name=first_name,
-            last_name=last_name,
-            session=session
-        )
+                telegram_id=telegram_id,
+                username=username,
+                first_name=first_name,
+                last_name=last_name,
+                session=session,
+            )
         return f"User created successfully with ID: {user.id}, Telegram ID: {user.telegram_id}"
     except ValueError as e:
         return f"Error creating user: {str(e)}"
@@ -124,7 +137,9 @@ async def get_all_groups() -> str:
         return f"Database error: {str(e)}"
 
 
-async def get_group_by_id(group_id: Annotated[int, "ID of the group to retrieve"]) -> str:
+async def get_group_by_id(
+    group_id: Annotated[int, "ID of the group to retrieve"],
+) -> str:
     """Get detailed information about a specific group."""
     logger.info(f"Getting group by ID: {group_id}")
     try:
@@ -136,17 +151,19 @@ async def get_group_by_id(group_id: Annotated[int, "ID of the group to retrieve"
         result = "Group Details:\n"
         result += f"- ID: {group['id']}\n"
         result += f"- Name: '{group['name']}'\n"
-        if group['description']:
+        if group["description"]:
             result += f"- Description: '{group['description']}'\n"
         result += f"- Created: {group['created_at']}\n"
         result += f"- Users ({group['users_count']}):\n"
 
-        for user in group['users']:
+        for user in group["users"]:
             result += f"  * {user['telegram_id']}"
-            if user['username']:
+            if user["username"]:
                 result += f" (@{user['username']})"
-            if user['first_name'] or user['last_name']:
-                result += f" - {user['first_name'] or ''} {user['last_name'] or ''}".strip()
+            if user["first_name"] or user["last_name"]:
+                result += (
+                    f" - {user['first_name'] or ''} {user['last_name'] or ''}".strip()
+                )
             result += "\n"
 
         return result
@@ -155,7 +172,9 @@ async def get_group_by_id(group_id: Annotated[int, "ID of the group to retrieve"
         return f"Database error: {str(e)}"
 
 
-async def get_group_by_name(name: Annotated[str, "Name of the group to retrieve"]) -> str:
+async def get_group_by_name(
+    name: Annotated[str, "Name of the group to retrieve"],
+) -> str:
     """Get detailed information about a group by its name."""
     logger.info(f"Getting group by name: {name}")
     try:
@@ -191,7 +210,7 @@ async def get_group_by_name(name: Annotated[str, "Name of the group to retrieve"
 async def get_all_users() -> str:
     """Get a list of all users in the database."""
     logger.info("Getting all users")
-    try:    
+    try:
         with SessionLocal() as session:
             users = User.get_all(session)
         if not users:
@@ -212,7 +231,9 @@ async def get_all_users() -> str:
         return f"Database error: {str(e)}"
 
 
-async def get_user_by_telegram_id(telegram_id: Annotated[int, "Telegram ID of the user to retrieve"]) -> str:
+async def get_user_by_telegram_id(
+    telegram_id: Annotated[int, "Telegram ID of the user to retrieve"],
+) -> str:
     """Get detailed information about a user by their Telegram ID."""
     logger.info(f"Getting user by Telegram ID: {telegram_id}")
     try:

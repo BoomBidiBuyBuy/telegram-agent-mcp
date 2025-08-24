@@ -1,7 +1,6 @@
 import pytest
 
 import storage
-import envs
 # import src.storage as storage
 # import src.envs as envs
 
@@ -10,7 +9,8 @@ import envs
     "storage_kind,expected_url",
     [
         (None, "sqlite:///:memory:"),  # default behaviour
-        ("mysql", "sqlite:///:memory:"),
+        ("sqlite-memory", "sqlite:///:memory:"),
+        ("sqlite", "sqlite:///./dev.db"),
         ("postgres", "postgresql+psycopg2://user:password@host:port/telegram_bot"),
     ],
 )
@@ -33,8 +33,5 @@ def test_storage_endpoint(mocker, storage_kind, expected_url):
         connect_args = {}
 
     storage.create_engine.assert_called_once_with(
-        expected_url,
-        echo=False,
-        connect_args=connect_args
+        expected_url, echo=False, connect_args=connect_args
     )
-

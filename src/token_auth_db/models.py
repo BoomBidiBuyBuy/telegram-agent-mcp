@@ -23,7 +23,9 @@ class AuthUser(Base):
 
     name = Column(String, nullable=False)
 
-    tokens = relationship("AuthToken", back_populates="user", cascade="all, delete-orphan")
+    tokens = relationship(
+        "AuthToken", back_populates="user", cascade="all, delete-orphan"
+    )
 
     @staticmethod
     def create(user_id: str, username: str, session) -> "AuthUser":

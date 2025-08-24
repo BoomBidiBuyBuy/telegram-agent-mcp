@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 async def send_message_to_user(
     chat_id: Annotated[int, "Telegram chat/user id to send the message to"],
-    message: Annotated[str, "Text content to send"]
+    message: Annotated[str, "Text content to send"],
 ) -> str:
     """Send a message to a specific Telegram user."""
     logger.info(f"Sending message to user {chat_id}: {message}")

@@ -7,7 +7,7 @@ TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 # it add more output, for example SQL queries to db
 DEBUG_MODE = bool(int(os.environ.get("DEBUG_MODE", 0)))
 
-STORAGE_DB = os.environ.get("STORAGE_DB", "mysql")
+STORAGE_DB = os.environ.get("STORAGE_DB", "sqlite-memory")
 
 ########################
 # MCP servers configuration #

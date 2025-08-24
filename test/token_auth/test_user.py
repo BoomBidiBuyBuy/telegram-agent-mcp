@@ -7,7 +7,7 @@ from token_auth_db.models import AuthUser, AuthToken, AuthAction
 
 
 @pytest.fixture
-def session():    
+def session():
     with SessionLocal() as session:
         yield session
 
@@ -17,6 +17,7 @@ def session():
     # present in the next test
     Base.metadata.drop_all(bind=engine)
     init_db(engine)
+
 
 def test_user(session):
     """Check that the User table functioning without errors"""
@@ -107,8 +108,12 @@ def test_action(session):
     token2 = AuthToken(id="token345", user=user1)
     token3 = AuthToken(id="token567", user=user2)
 
-    action_pg_read = AuthAction(name="postgres_read", description="Postgres read access")
-    action_pg_write = AuthAction(name="postgres_write", description="Postgres write access")
+    action_pg_read = AuthAction(
+        name="postgres_read", description="Postgres read access"
+    )
+    action_pg_write = AuthAction(
+        name="postgres_write", description="Postgres write access"
+    )
     action_airflow_read = AuthAction(name="airflow_read", description="Airflow read")
 
     token1.actions.extend([action_pg_read, action_pg_write])
@@ -133,7 +138,9 @@ def test_action(session):
     # Add action for Bob
     ####################
     token = (
-        session.query(AuthToken).filter_by(user_id="tg1234", id="token567").one_or_none()
+        session.query(AuthToken)
+        .filter_by(user_id="tg1234", id="token567")
+        .one_or_none()
     )
     token.actions.append(action_airflow_read)
     session.commit()
