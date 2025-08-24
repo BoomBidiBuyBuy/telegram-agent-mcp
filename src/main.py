@@ -102,8 +102,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     logger.info(f"User {user_id} sent message: {message_text}")
 
     try:
-        async with httpx.AsyncClient() as client:
-            url = f"http://{envs.WORKER_ENDPOINT}/message"
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            url = f"{envs.AGENT_ENDPOINT}/message"
             payload = {
                 "message": message_text,
                 "thread_id": f"user_{user_id}",
@@ -161,7 +161,7 @@ def run_bot():
             ext_params["cert"] = envs.SSL_CERT_PATH
 
         application.run_webhook(
-            listen="0.0.0.0",
+            listen=envs.WEBHOOK_LISTEN,
             secret_token=uuid.uuid4().hex,
             port=envs.WEBHOOK_PORT,
             webhook_url=envs.WEBHOOK_URL,

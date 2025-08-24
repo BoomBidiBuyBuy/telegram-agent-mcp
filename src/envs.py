@@ -8,6 +8,9 @@ DEBUG_MODE = bool(int(os.environ.get("DEBUG_MODE", 0)))
 
 STORAGE_DB = os.environ.get("STORAGE_DB", "sqlite-memory")
 
+# endpoint where the agentic-worker lives
+AGENT_ENDPOINT = os.environ.get("AGENT_ENDPOINT")
+
 ############
 # postgres #
 ############
@@ -29,6 +32,10 @@ WEBHOOK_PORT = os.environ.get("WEBHOOK_PORT", os.environ.get("PORT", 8443))
 
 # webhook url to get messages
 WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
+
+# ip / domain that listens for webhooks
+WEBHOOK_LISTEN = os.environ.get("WEBHOOK_LISTEN")
+
 
 # path to the private.key
 # can be optional if set on a proxy
