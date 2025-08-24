@@ -1,6 +1,5 @@
 import os
 
-
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 
 # tests set 1 by default in conftest.py
@@ -8,20 +7,6 @@ TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 DEBUG_MODE = bool(int(os.environ.get("DEBUG_MODE", 0)))
 
 STORAGE_DB = os.environ.get("STORAGE_DB", "sqlite-memory")
-
-########################
-# MCP servers configuration #
-########################
-# path to mcp servers json file (used by loader in agent)
-MCP_SERVERS_FILE_PATH = os.environ.get(
-    "MCP_SERVERS_FILE_PATH", "assets/mcp-servers.json"
-)
-
-#############################
-# Reply Service MCP settings #
-#############################
-MCP_HOST = os.environ.get("MCP_HOST", "0.0.0.0")
-MCP_PORT = int(os.environ.get("MCP_PORT", "8090"))
 
 ############
 # postgres #

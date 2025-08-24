@@ -1,8 +1,0 @@
-{
-    "mcpServers": {
-        "MCPService": {
-            "transport": "streamable_http",
-            "url": "http://${MCP_HOST}:${MCP_PORT}/mcp/"
-        }
-    }
-}

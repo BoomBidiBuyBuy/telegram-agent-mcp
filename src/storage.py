@@ -42,7 +42,6 @@ def get_engine_and_sessionmaker() -> Tuple[object, sessionmaker]:
 
 def init_db(engine) -> None:
     from token_auth_db.models import AuthUser, AuthToken, AuthAction  # noqa: F401 - import to register models
-    from user_group_db.models import Group, User  # noqa: F401 - import to register models
 
     Base.metadata.create_all(bind=engine)
 

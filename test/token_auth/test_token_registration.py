@@ -2,7 +2,7 @@ import logging
 import pytest
 
 from unittest.mock import ANY
-from telegram_bot_app import token_command
+from main import token_command
 from token_auth_db.models import AuthUser, AuthToken
 
 import telegram
