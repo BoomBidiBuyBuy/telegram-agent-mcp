@@ -1,5 +1,12 @@
 import os
 
+HOST_IP = os.environ.get("HOST_IP")
+
+USERS_GROUPS_MCP_PORT = os.environ.get("USERS_GROUPS_MCP_PORT")
+
+# Teacher Telegram ID
+TEACHER_TELEGRAM_ID = int(os.environ.get("TEACHER_TELEGRAM_ID"))
+
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 
 # tests set 1 by default in conftest.py
