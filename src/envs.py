@@ -1,9 +1,5 @@
 import os
 
-HOST_IP = os.environ.get("HOST_IP")
-
-USERS_GROUPS_MCP_PORT = os.environ.get("USERS_GROUPS_MCP_PORT")
-
 # endpoint where the users-groups-mcp-server lives
 USERS_GROUPS_MCP_ENDPOINT = os.environ.get("USERS_GROUPS_MCP_ENDPOINT")
 
