@@ -8,13 +8,13 @@ USERS_GROUPS_MCP_PORT = os.environ.get("USERS_GROUPS_MCP_PORT")
 USERS_GROUPS_MCP_ENDPOINT = os.environ.get("USERS_GROUPS_MCP_ENDPOINT")
 
 # Teacher Telegram ID
-TEACHER_TELEGRAM_ID = int(os.environ.get("TEACHER_TELEGRAM_ID"))
+TEACHER_TELEGRAM_ID = int(os.environ.get("TEACHER_TELEGRAM_ID", "0"))
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 
 # tests set 1 by default in conftest.py
 # it add more output, for example SQL queries to db
-DEBUG_MODE = bool(int(os.environ.get("DEBUG_MODE", 0)))
+DEBUG_MODE = bool(int(os.environ.get("DEBUG_MODE", "0")))
 
 STORAGE_DB = os.environ.get("STORAGE_DB", "sqlite-memory")
 
