@@ -4,6 +4,9 @@ HOST_IP = os.environ.get("HOST_IP")
 
 USERS_GROUPS_MCP_PORT = os.environ.get("USERS_GROUPS_MCP_PORT")
 
+# endpoint where the users-groups-mcp-server lives
+USERS_GROUPS_MCP_ENDPOINT = os.environ.get("USERS_GROUPS_MCP_ENDPOINT")
+
 # Teacher Telegram ID
 TEACHER_TELEGRAM_ID = int(os.environ.get("TEACHER_TELEGRAM_ID"))
 

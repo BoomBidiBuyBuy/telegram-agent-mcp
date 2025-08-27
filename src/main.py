@@ -1,12 +1,13 @@
 import logging
 import uuid
-from typing import Dict, Optional
+from typing import Dict
 
 import envs
 from storage import SessionLocal
 from token_auth_db.models import AuthToken, AuthUser
 
 import httpx
+from fastmcp import Client
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
@@ -19,42 +20,21 @@ from telegram.ext import (
     ConversationHandler,
 )
 
-# States for ConversationHandler
-CHOOSING_LANGUAGE, ENTERING_NAME, ENTERING_SURNAME = range(3)
-
-# Dictionary to store user states
-user_states: Dict[int, Dict] = {}
+# Import constants from JSON file
+from constants import (
+    CHOOSING_LANGUAGE,
+    ENTERING_NAME,
+    ENTERING_SURNAME,
+    LANGUAGES,
+    MESSAGES,
+    LANGUAGE_BUTTONS,
+)
 
 # Teacher Telegram ID (imported from envs)
 from envs import TEACHER_TELEGRAM_ID
 
-# Languages and their messages
-LANGUAGES = {
-    "ru": {
-        "enter_name": "Пожалуйста, введите ваше имя:",
-        "enter_surname": "Пожалуйста, введите вашу фамилию:",
-        "user_created": "Регистрация прошла успешна!",
-        "teacher_tools": "Что ты можешь сделать:\n\n1. Создать группу, задав её название.\n2. Добавить ученика в группу по его никнейму в телеграмме.\n3. Удалить ученика из группы.\n4. Просмотреть все группы.\n5. Просмотреть всех учеников.\n\nВыберите действие:",
-        "error": "Произошла ошибка. Попробуйте еще раз.",
-        "no_username": "Для использования бота необходимо установить username в настройках Telegram. Пожалуйста, установите username и попробуйте снова."
-    },
-    "en": {
-        "enter_name": "Please enter your first name:",
-        "enter_surname": "Please enter your last name:",
-        "user_created": "Registration completed successfully!",
-        "teacher_tools": "What can you do:\n\n1. Create a group, giving it a name.\n2. Add a student to a group by their Telegram username.\n3. Remove a student from a group.\n4. View all groups.\n5. View all students.\n\nChoose an action:",
-        "error": "An error occurred. Please try again.",
-        "no_username": "To use the bot, you need to set a username in Telegram settings. Please set a username and try again."
-    },
-    "es": {
-        "enter_name": "Por favor, introduce tu nombre:",
-        "enter_surname": "Por favor, introduce tu apellido:",
-        "user_created": "¡Registro completado exitosamente!",
-        "teacher_tools": "¿Qué puedes hacer?\n\n1. Crear un grupo, dándole un nombre.\n2. Añadir un estudiante a un grupo por su nombre de usuario de Telegram.\n3. Eliminar un estudiante de un grupo.\n4. Ver todos los grupos.\n5. Ver todos los estudiantes.\n\nElige una acción:",
-        "error": "Ocurrió un error. Por favor, intenta de nuevo.",
-        "no_username": "Para usar el bot, necesitas establecer un nombre de usuario en la configuración de Telegram. Por favor, establece un nombre de usuario e intenta de nuevo."
-    }
-}
+# Dictionary to store user states
+user_states: Dict[int, Dict] = {}
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -66,9 +46,9 @@ def get_language_keyboard():
     """Creates keyboard for language selection"""
     keyboard = [
         [
-            InlineKeyboardButton("🇷🇺 Русский", callback_data="lang_ru"),
-            InlineKeyboardButton("🇺🇸 English", callback_data="lang_en"),
-            InlineKeyboardButton("🇪🇸 Español", callback_data="lang_es"),
+            InlineKeyboardButton(LANGUAGE_BUTTONS["ru"], callback_data="lang_ru"),
+            InlineKeyboardButton(LANGUAGE_BUTTONS["en"], callback_data="lang_en"),
+            InlineKeyboardButton(LANGUAGE_BUTTONS["es"], callback_data="lang_es"),
         ]
     ]
     return InlineKeyboardMarkup(keyboard)
@@ -78,25 +58,23 @@ async def language_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     """Language selection handler"""
     query = update.callback_query
     await query.answer()
-    
+
     user_id = update.effective_user.id
     language = query.data.split("_")[1]  # lang_ru -> ru
-    
+
     # Save selected language
     if user_id not in user_states:
         user_states[user_id] = {}
     user_states[user_id]["language"] = language
-    
-    # Check if user is a teacher
-    is_teacher = user_id == TEACHER_TELEGRAM_ID
-    
-    if is_teacher:
+
+    if user_id == TEACHER_TELEGRAM_ID:
         # For teacher show available tools
         await query.edit_message_text(LANGUAGES[language]["teacher_tools"])
         return ConversationHandler.END
     else:
         # For student ask for name
-        await query.edit_message_text(LANGUAGES[language]["enter_name"])
+        await query.answer()  # Answer the callback query
+        await query.message.reply_text(LANGUAGES[language]["enter_name"])
         return ENTERING_NAME
 
 
@@ -104,66 +82,87 @@ async def handle_name_input(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     """Name input handler"""
     user_id = update.effective_user.id
     first_name = update.message.text
-    
+
     if user_id not in user_states:
-        await update.message.reply_text("An error occurred. Please start over with /start")
+        await update.message.reply_text(MESSAGES["error_occurred"])
         return ConversationHandler.END
-    
+
+    # Validate input - only allow letters, spaces, and hyphens
+    if not first_name.replace(" ", "").replace("-", "").isalpha():
+        language = user_states[user_id]["language"]
+        await update.message.reply_text(LANGUAGES[language]["invalid_name"])
+        return ENTERING_NAME
+
     user_states[user_id]["first_name"] = first_name
     language = user_states[user_id]["language"]
-    
+
     await update.message.reply_text(LANGUAGES[language]["enter_surname"])
     return ENTERING_SURNAME
 
 
-async def handle_surname_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def handle_surname_input(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
     """Surname input handler"""
     user_id = update.effective_user.id
     last_name = update.message.text
-    
+
     if user_id not in user_states:
-        await update.message.reply_text("An error occurred. Please start over with /start")
+        await update.message.reply_text(MESSAGES["error_occurred"])
         return ConversationHandler.END
-    
+
+    # Validate input - only allow letters, spaces, and hyphens
+    if not last_name.replace(" ", "").replace("-", "").isalpha():
+        language = user_states[user_id]["language"]
+        await update.message.reply_text(LANGUAGES[language]["invalid_surname"])
+        return ENTERING_SURNAME
+
     user_states[user_id]["last_name"] = last_name
     language = user_states[user_id]["language"]
-    
+
     # Get username from Telegram
     username = update.effective_user.username
-    
-    try:
-        # Create user via MCP server
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            url = f"http://{envs.HOST_IP}:{envs.USERS_GROUPS_MCP_PORT}/create_user"
-            payload = {
-                "telegram_id": user_id,
-                "username": username,
-                "first_name": user_states[user_id]["first_name"],
-                "last_name": user_states[user_id]["last_name"],
-            }
-            response = await client.post(url, json=payload)
 
-            if response.status_code == 200:
-                response_data = response.json()
-                await update.message.reply_text(LANGUAGES[language]["user_created"])
-                logger.info(f"User {user_id} created successfully via MCP server")
-            elif response.status_code == 400:
+    try:
+        # Create user via FastMCP Client
+        client = Client(f"{envs.USERS_GROUPS_MCP_ENDPOINT}/mcp")
+
+        async with client:
+            result = await client.call_tool(
+                "create_user",
+                {
+                    "telegram_id": user_id,
+                    "username": username,
+                    "first_name": user_states[user_id]["first_name"],
+                    "last_name": user_states[user_id]["last_name"],
+                },
+            )
+
+            if "already exists" in result.data:
                 # User already exists
-                await update.message.reply_text("User already exists in the system.")
+                await update.message.reply_text(MESSAGES["user_exists"])
                 logger.info(f"User {user_id} already exists in database")
             else:
-                logger.error(f"MCP server error: {response.status_code} {response.text}")
-                await update.message.reply_text(LANGUAGES[language]["error"])
-        
+                await update.message.reply_text(LANGUAGES[language]["user_created"])
+                logger.info(f"User {user_id} created successfully via FastMCP Client")
+
     except Exception as e:
         logger.error(f"Error creating user {user_id}: {e}")
         await update.message.reply_text(LANGUAGES[language]["error"])
-    
+
     # Clear user state
     if user_id in user_states:
         del user_states[user_id]
-    
+
     return ConversationHandler.END
+
+
+async def block_text_during_language_selection(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
+    """Block text input during language selection"""
+    await update.message.reply_text(MESSAGES["block_text_selection"])
+    return CHOOSING_LANGUAGE
 
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -171,8 +170,8 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.effective_user.id
     if user_id in user_states:
         del user_states[user_id]
-    
-    await update.message.reply_text("Registration cancelled. Use /start to begin.")
+
+    await update.message.reply_text(MESSAGES["registration_cancelled"])
     return ConversationHandler.END
 
 
@@ -186,31 +185,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     # Check if username exists (required field)
     if not username:
-        await update.message.reply_text("To use the bot, you need to set a username in Telegram settings. Please set a username and try again.")
+        await update.message.reply_text(LANGUAGES["en"]["no_username"])
         return
 
-    # Check if user is a teacher
-    is_teacher = user_id == TEACHER_TELEGRAM_ID
-    
-    if is_teacher:
-        welcome_message = """🇷🇺 Добро пожаловать! Пожалуйста, выберите язык общения:
-
-🇺🇸 Welcome! Please choose your communication language:
-
-🇪🇸 ¡Bienvenido! Por favor, elige tu idioma de comunicación:"""
-    else:
-        welcome_message = """🇷🇺 Добро пожаловать! Пожалуйста, выберите язык общения:
-
-🇺🇸 Welcome! Please choose your communication language:
-
-🇪🇸 ¡Bienvenido! Por favor, elige tu idioma de comunicación:"""
-    
     await update.message.reply_text(
-        welcome_message,
-        reply_markup=get_language_keyboard()
+        MESSAGES["welcome"], reply_markup=get_language_keyboard()
     )
-    
-    logger.info(f"Start function completed for user {user_id}, returning CHOOSING_LANGUAGE state")
+
     return CHOOSING_LANGUAGE
 
 
@@ -281,6 +262,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     logger.info(f"User {user_id} sent message: {message_text}")
 
+    # Check if user is in registration process
+    if user_id in user_states:
+        await update.message.reply_text(
+            "Please complete your registration first. Use /cancel to cancel registration."
+        )
+        return
+
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             url = f"{envs.AGENT_ENDPOINT}/message"
@@ -323,9 +311,20 @@ def run_bot():
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
         states={
-            CHOOSING_LANGUAGE: [CallbackQueryHandler(language_callback, pattern="^lang_")],
-            ENTERING_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_name_input)],
-            ENTERING_SURNAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_surname_input)],
+            CHOOSING_LANGUAGE: [
+                CallbackQueryHandler(language_callback, pattern="^lang_"),
+                # Block all text messages during language selection
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND,
+                    block_text_during_language_selection,
+                ),
+            ],
+            ENTERING_NAME: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_name_input)
+            ],
+            ENTERING_SURNAME: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_surname_input)
+            ],
         },
         fallbacks=[CommandHandler("cancel", cancel)],
     )
