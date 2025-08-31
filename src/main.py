@@ -274,7 +274,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             url = f"{envs.AGENT_ENDPOINT}/message"
             payload = {
                 "message": message_text,
-                "thread_id": f"user_{user_id}",
+                "user_id": f"{user_id}",
             }
             response = await client.post(url, json=payload)
 
