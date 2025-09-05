@@ -216,13 +216,13 @@ async def teach_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
                 response_data = response.json()
                 logger.info(f"Response data: {response_data}")
                 if not response_data["exists"]:
-                    update.message.reply_text("Hm, is your username is correct? 🤔")
+                    await update.message.reply_text("Hm, is your username is correct? 🤔")
                     return
             else:
                 logger.error(
                     f"Error checking username '{given_username}': {response.status_code} {response.text}"
                 )
-                update.message.reply_text("Hmm, something went wrong. Contact support.")
+                await update.message.reply_text("Hmm, something went wrong. Contact support.")
                 return
 
             # Get user_id for the username
@@ -240,13 +240,13 @@ async def teach_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
                 if user_id and user_id != teacher_user_id:
                     # it should be either empty --> new teacher registration
                     # or equal to teacher_user_id --> existing teacher
-                    update.message.reply_text("Hm, is your username is correct? 🤔")
+                    await update.message.reply_text("Hm, is your username is correct? 🤔")
                     return
             else:
                 logger.error(
                     f"Error getting user_id for the username '{given_username}': {response.status_code} {response.text}"
                 )
-                update.message.reply_text("Hmm, something went wrong. Contact support.")
+                await update.message.reply_text("Hmm, something went wrong. Contact support.")
                 return
 
             # Register new teacher into groups-users service
@@ -260,7 +260,7 @@ async def teach_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
                     logger.error(
                         f"Error setting user_id for the username '{given_username}': {response.status_code} {response.text}"
                     )
-                    update.message.reply_text(
+                    await update.message.reply_text(
                         "Hmm, something went wrong. Contact support."
                     )
                     return
@@ -277,14 +277,14 @@ async def teach_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
                     logger.error(
                         f"Error registering user into the MCP registry: {response.status_code} {response.text}"
                     )
-                    update.message.reply_text(
+                    await update.message.reply_text(
                         "Hmm, something went wrong. Contact support."
                     )
                     return
 
             await update.message.reply_text("☑️")
     else:
-        update.message.reply_text("Forgot to provide your username? 🤔")
+        await update.message.reply_text("Forgot to provide your username? 🤔")
         return
 
 
