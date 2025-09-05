@@ -1,5 +1,4 @@
 import logging
-from re import U
 import uuid
 from typing import Dict
 
@@ -220,7 +219,9 @@ async def teach_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
                     update.message.reply_text("Hm, is your username is correct? 🤔")
                     return
             else:
-                logger.error(f"Error checking username '{given_username}': {response.status_code} {response.text}")
+                logger.error(
+                    f"Error checking username '{given_username}': {response.status_code} {response.text}"
+                )
                 update.message.reply_text("Hmm, something went wrong. Contact support.")
                 return
 
@@ -242,7 +243,9 @@ async def teach_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
                     update.message.reply_text("Hm, is your username is correct? 🤔")
                     return
             else:
-                logger.error(f"Error getting user_id for the username '{given_username}': {response.status_code} {response.text}")
+                logger.error(
+                    f"Error getting user_id for the username '{given_username}': {response.status_code} {response.text}"
+                )
                 update.message.reply_text("Hmm, something went wrong. Contact support.")
                 return
 
@@ -254,26 +257,35 @@ async def teach_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
                     json={"user_id": teacher_user_id, "username": given_username},
                 )
                 if response.status_code != 200:
-                    logger.error(f"Error setting user_id for the username '{given_username}': {response.status_code} {response.text}")
-                    update.message.reply_text("Hmm, something went wrong. Contact support.")
+                    logger.error(
+                        f"Error setting user_id for the username '{given_username}': {response.status_code} {response.text}"
+                    )
+                    update.message.reply_text(
+                        "Hmm, something went wrong. Contact support."
+                    )
                     return
-   
+
                 # register new user into the MCP registry to allow to use tools
-                logger.info(f"Register new user into the MCP registry to allow to use tools")
+                logger.info(
+                    "Register new user into the MCP registry to allow to use tools"
+                )
                 response = await client.post(
                     f"{envs.MCP_REGISTRY_ENDPOINT}/register_user",
                     json={"user_id": teacher_user_id, "role_name": "teacher"},
                 )
                 if response.status_code != 200:
-                    logger.error(f"Error registering user into the MCP registry: {response.status_code} {response.text}")
-                    update.message.reply_text("Hmm, something went wrong. Contact support.")
+                    logger.error(
+                        f"Error registering user into the MCP registry: {response.status_code} {response.text}"
+                    )
+                    update.message.reply_text(
+                        "Hmm, something went wrong. Contact support."
+                    )
                     return
 
             await update.message.reply_text("☑️")
     else:
         update.message.reply_text("Forgot to provide your username? 🤔")
         return
- 
 
 
 async def token_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
