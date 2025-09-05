@@ -1,4 +1,5 @@
 import logging
+from re import U
 import uuid
 from typing import Dict
 
@@ -195,6 +196,86 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return CHOOSING_LANGUAGE
 
 
+async def teach_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Handle the /teach command"""
+
+    logger.info("Call the 'teach_command' handler")
+
+    if context.args:
+        given_username = context.args[0]
+        teacher_user_id = update.effective_user.id
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            # Check if username exists
+            logger.info(f"Check if username '{given_username}' exists")
+            response = await client.post(
+                f"{envs.USERS_GROUPS_MCP_ENDPOINT}/check_username_exists",
+                json={"username": given_username},
+            )
+
+            if response.status_code == 200:
+                response_data = response.json()
+                logger.info(f"Response data: {response_data}")
+                if not response_data["exists"]:
+                    update.message.reply_text("Hm, is your username is correct? 🤔")
+                    return
+            else:
+                logger.error(f"Error checking username '{given_username}': {response.status_code} {response.text}")
+                update.message.reply_text("Hmm, something went wrong. Contact support.")
+                return
+
+            # Get user_id for the username
+            logger.info(f"Get user_id for the username '{given_username}'")
+            response = await client.post(
+                f"{envs.USERS_GROUPS_MCP_ENDPOINT}/get_user_id",
+                json={"username": given_username},
+            )
+            if response.status_code == 200:
+                response_data = response.json()
+                logger.info(f"Response data: {response_data}")
+                user_id = response_data["user_id"]
+                logger.info(f"User_id for the username '{given_username}': {user_id}")
+
+                if user_id and user_id != teacher_user_id:
+                    # it should be either empty --> new teacher registration
+                    # or equal to teacher_user_id --> existing teacher
+                    update.message.reply_text("Hm, is your username is correct? 🤔")
+                    return
+            else:
+                logger.error(f"Error getting user_id for the username '{given_username}': {response.status_code} {response.text}")
+                update.message.reply_text("Hmm, something went wrong. Contact support.")
+                return
+
+            # Register new teacher into groups-users service
+            if not user_id:
+                logger.info(f"Set user_id for the username '{given_username}'")
+                response = await client.post(
+                    f"{envs.USERS_GROUPS_MCP_ENDPOINT}/set_user_id_for_username",
+                    json={"user_id": teacher_user_id, "username": given_username},
+                )
+                if response.status_code != 200:
+                    logger.error(f"Error setting user_id for the username '{given_username}': {response.status_code} {response.text}")
+                    update.message.reply_text("Hmm, something went wrong. Contact support.")
+                    return
+   
+                # register new user into the MCP registry to allow to use tools
+                logger.info(f"Register new user into the MCP registry to allow to use tools")
+                response = await client.post(
+                    f"{envs.MCP_REGISTRY_ENDPOINT}/register_user",
+                    json={"user_id": teacher_user_id, "role_name": "teacher"},
+                )
+                if response.status_code != 200:
+                    logger.error(f"Error registering user into the MCP registry: {response.status_code} {response.text}")
+                    update.message.reply_text("Hmm, something went wrong. Contact support.")
+                    return
+
+            await update.message.reply_text("☑️")
+    else:
+        update.message.reply_text("Forgot to provide your username? 🤔")
+        return
+ 
+
+
 async def token_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """User pass an issued token to us.
     It allows to connect issued token with an user id.
@@ -309,7 +390,10 @@ def run_bot():
 
     # Create ConversationHandler for registration
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler("start", start)],
+        entry_points=[
+            CommandHandler("start", start),
+            CommandHandler("teach", teach_command),
+        ],
         states={
             CHOOSING_LANGUAGE: [
                 CallbackQueryHandler(language_callback, pattern="^lang_"),
