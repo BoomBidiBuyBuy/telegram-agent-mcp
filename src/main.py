@@ -200,13 +200,52 @@ async def learn_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     logger.info("Call the 'learn_command' handler")
     user_id = update.effective_user.id
     logger.info(f"User {user_id} called /learn command")
+    hello_word = ""
 
-    is_authenticated = await check_user_is_authenticated(user_id)
-    if not is_authenticated:
-        await update.message.reply_text("Hmmm, are you not registered yet? 🔒")
-        return
+    if context.args:
+        hello_word = context.args[0]  # TODO: not implemented yet
+        hello_word = hello_word.strip()
 
-    return CHOOSING_LANGUAGE
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.post(
+            f"{envs.USERS_GROUPS_MCP_ENDPOINT}/get_username_by_user_id",
+            json={"user_id": user_id},
+        )
+
+        if response.status_code == 200:
+            response_data = response.json()
+            logger.info(f"Response data: {response_data}")
+            username = response_data["username"]
+            logger.info(f"Username for the user_id '{user_id}': '{username}'")
+            if username:
+                # already have username, no need to generate
+                await update.message.reply_text(f"Hello, {username}! 🤝")
+                return
+            else:
+                response = await client.post(
+                    f"{envs.USERS_GROUPS_MCP_ENDPOINT}/create_student_account",
+                    json={"user_id": user_id},
+                )
+                if response.status_code == 200:
+                    response_data = response.json()
+                    logger.info(f"Response data: {response_data}")
+                    username = response_data["username"]
+                    logger.info(f"Username for the user_id '{user_id}': '{username}'")
+                    await update.message.reply_text(username)
+                    return
+                else:
+                    await update.message.reply_text(
+                        "Hmm, something went wrong. Contact support."
+                    )
+                    return
+        else:
+            logger.error(
+                f"Error creating student account: {response.status_code} {response.text}"
+            )
+            await update.message.reply_text(
+                "Hmm, something went wrong. Contact support."
+            )
+            return
 
 
 async def teach_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
