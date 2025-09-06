@@ -195,6 +195,20 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return CHOOSING_LANGUAGE
 
 
+async def learn_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Handle the /learn command"""
+    logger.info("Call the 'learn_command' handler")
+    user_id = update.effective_user.id
+    logger.info(f"User {user_id} called /learn command")
+
+    is_authenticated = await check_user_is_authenticated(user_id)
+    if not is_authenticated:
+        await update.message.reply_text("Hmmm, are you not registered yet? 🔒")
+        return
+
+    return CHOOSING_LANGUAGE
+
+
 async def teach_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Handle the /teach command"""
 
@@ -241,21 +255,25 @@ async def teach_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             if response.status_code == 200:
                 response_data = response.json()
                 logger.info(f"Response data: {response_data}")
-                user_id = str(response_data["user_id"].strip())
-                logger.info(f"User_id for the username '{given_username}': '{user_id}'")
-
-                if user_id and user_id != teacher_user_id:
-                    # it should be either empty --> new teacher registration
-                    # or equal to teacher_user_id --> existing teacher
+                user_id = response_data["user_id"]
+                if user_id:
+                    user_id = str(user_id).strip()
                     logger.info(
-                        f"user_id either empty or not equal to teacher_user_id: "
-                        f"teach_user_id={teacher_user_id}, user_id={user_id}"
+                        f"User_id for the username '{given_username}': '{user_id}'"
                     )
 
-                    await update.message.reply_text(
-                        "Hm, is your username is correct? 🤔"
-                    )
-                    return
+                    if user_id != teacher_user_id:
+                        # it should be either empty --> new teacher registration
+                        # or equal to teacher_user_id --> existing teacher
+                        logger.info(
+                            f"user_id either empty or not equal to teacher_user_id: "
+                            f"teach_user_id={teacher_user_id}, user_id={user_id}"
+                        )
+
+                        await update.message.reply_text(
+                            "Hm, is your username is correct? 🤔"
+                        )
+                        return
             else:
                 logger.error(
                     f"Error getting user_id for the username '{given_username}': {response.status_code} {response.text}"
@@ -439,6 +457,7 @@ def run_bot():
         entry_points=[
             CommandHandler("start", start),
             CommandHandler("teach", teach_command),
+            CommandHandler("learn", learn_command),
         ],
         states={
             CHOOSING_LANGUAGE: [
