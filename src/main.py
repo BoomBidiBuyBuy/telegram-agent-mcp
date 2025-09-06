@@ -303,6 +303,27 @@ async def teach_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
                 )
                 return
 
+            # Check if user_id has another username
+            logger.info(f"Check if user_id '{teacher_user_id}' has another username")
+            response = await client.post(
+                f"{envs.USERS_GROUPS_MCP_ENDPOINT}/get_username_by_user_id",
+                json={"user_id": teacher_user_id},
+            )
+
+            if response.status_code == 200:
+                response_data = response.json()
+                logger.info(f"Response data: {response_data}")
+                username = response_data["username"]
+                logger.info(
+                    f"Username for the user_id '{teacher_user_id}': '{username}'"
+                )
+
+                if username and username != given_username:
+                    await update.message.reply_text(
+                        f"Hm, you already have a username '{username}'. Please use it."
+                    )
+                    return
+
             # Get user_id for the username
             logger.info(f"Get user_id for the username '{given_username}'")
             response = await client.post(
@@ -342,6 +363,7 @@ async def teach_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
             # Register new teacher into groups-users service
             if not user_id:
+                # set user_id for the username
                 logger.info(f"Set user_id for the username '{given_username}'")
                 response = await client.post(
                     f"{envs.USERS_GROUPS_MCP_ENDPOINT}/set_user_id_for_username",
