@@ -216,13 +216,17 @@ async def teach_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
                 response_data = response.json()
                 logger.info(f"Response data: {response_data}")
                 if not response_data["exists"]:
-                    await update.message.reply_text("Hm, is your username is correct? 🤔")
+                    await update.message.reply_text(
+                        "Hm, is your username is correct? 🤔"
+                    )
                     return
             else:
                 logger.error(
                     f"Error checking username '{given_username}': {response.status_code} {response.text}"
                 )
-                await update.message.reply_text("Hmm, something went wrong. Contact support.")
+                await update.message.reply_text(
+                    "Hmm, something went wrong. Contact support."
+                )
                 return
 
             # Get user_id for the username
@@ -240,13 +244,17 @@ async def teach_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
                 if user_id and user_id != teacher_user_id:
                     # it should be either empty --> new teacher registration
                     # or equal to teacher_user_id --> existing teacher
-                    await update.message.reply_text("Hm, is your username is correct? 🤔")
+                    await update.message.reply_text(
+                        "Hm, is your username is correct? 🤔"
+                    )
                     return
             else:
                 logger.error(
                     f"Error getting user_id for the username '{given_username}': {response.status_code} {response.text}"
                 )
-                await update.message.reply_text("Hmm, something went wrong. Contact support.")
+                await update.message.reply_text(
+                    "Hmm, something went wrong. Contact support."
+                )
                 return
 
             # Register new teacher into groups-users service
@@ -348,6 +356,26 @@ async def token_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         )
 
 
+async def check_user_is_authenticated(user_id: str) -> bool:
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        # Check if user allowed to speak with agent
+        logger.info(f"Check if user '{user_id}' allowed to speak with agent")
+        response = await client.post(
+            f"{envs.USERS_GROUPS_MCP_ENDPOINT}/check_user_id_activated",
+            json={"user_id": user_id},
+        )
+
+        if response.status_code == 200:
+            response_data = response.json()
+            logger.info(f"Response data: {response_data}")
+            return response_data["activated"]
+        else:
+            logger.error(
+                f"Status code from check_user_id_activated: {response.status_code} {response.text}"
+            )
+            return False
+
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle incoming messages and process them with the agent."""
     user_id = update.effective_user.id
@@ -355,11 +383,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     logger.info(f"User {user_id} sent message: {message_text}")
 
-    # Check if user is in registration process
-    if user_id in user_states:
-        await update.message.reply_text(
-            "Please complete your registration first. Use /cancel to cancel registration."
-        )
+    is_authenticated = await check_user_is_authenticated(user_id)
+    if not is_authenticated:
+        await update.message.reply_text("Hmmm, are you not registered yet? 🔒")
         return
 
     try:
