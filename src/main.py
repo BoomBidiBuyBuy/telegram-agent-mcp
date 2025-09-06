@@ -202,7 +202,10 @@ async def teach_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
     if context.args:
         given_username = context.args[0]
-        teacher_user_id = update.effective_user.id
+        teacher_user_id = str(update.effective_user.id)
+        logger.info(
+            f"Given username='{given_username}' and teacher_user_id='{teacher_user_id}'"
+        )
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             # Check if username exists
@@ -238,12 +241,17 @@ async def teach_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             if response.status_code == 200:
                 response_data = response.json()
                 logger.info(f"Response data: {response_data}")
-                user_id = response_data["user_id"]
-                logger.info(f"User_id for the username '{given_username}': {user_id}")
+                user_id = str(response_data["user_id"].strip())
+                logger.info(f"User_id for the username '{given_username}': '{user_id}'")
 
                 if user_id and user_id != teacher_user_id:
                     # it should be either empty --> new teacher registration
                     # or equal to teacher_user_id --> existing teacher
+                    logger.info(
+                        f"user_id either empty or not equal to teacher_user_id: "
+                        f"teach_user_id={teacher_user_id}, user_id={user_id}"
+                    )
+
                     await update.message.reply_text(
                         "Hm, is your username is correct? 🤔"
                     )
