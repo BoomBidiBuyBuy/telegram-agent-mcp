@@ -352,6 +352,8 @@ async def teach_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
                             "Hm, is your username is correct? 🤔"
                         )
                         return
+
+                    # TODO: check that this user_id has the "teacher" role
             else:
                 logger.error(
                     f"Error getting user_id for the username '{given_username}': {response.status_code} {response.text}"
