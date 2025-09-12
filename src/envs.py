@@ -3,6 +3,8 @@ import os
 # endpoint where the users-groups-mcp-server lives
 USERS_GROUPS_MCP_ENDPOINT = os.environ.get("USERS_GROUPS_MCP_ENDPOINT")
 
+MCP_REGISTRY_ENDPOINT = os.environ.get("MCP_REGISTRY_ENDPOINT")
+
 # Teacher Telegram ID
 TEACHER_TELEGRAM_ID = int(os.environ.get("TEACHER_TELEGRAM_ID", "0"))
 
