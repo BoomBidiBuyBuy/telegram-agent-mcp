@@ -15,11 +15,8 @@ CONSTANTS = load_constants()
 
 # Extract commonly used constants
 STATES = CONSTANTS["states"]
-LANGUAGES = CONSTANTS["languages"]
 MESSAGES = CONSTANTS["messages"]
-LANGUAGE_BUTTONS = CONSTANTS["language_buttons"]
+ROLE_BUTTONS = CONSTANTS["role_buttons"]
 
 # State constants for easier access
-CHOOSING_LANGUAGE = STATES["CHOOSING_LANGUAGE"]
-ENTERING_NAME = STATES["ENTERING_NAME"]
-ENTERING_SURNAME = STATES["ENTERING_SURNAME"]
+CHOOSING_ROLE = STATES["CHOOSING_ROLE"]

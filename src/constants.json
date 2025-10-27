@@ -1,51 +1,31 @@
 {
   "states": {
-    "CHOOSING_LANGUAGE": 1,
-    "ENTERING_NAME": 2,
-    "ENTERING_SURNAME": 3
-  },
-  "languages": {
-    "ru": {
-      "enter_name": "Пожалуйста, введите ваше имя:",
-      "enter_surname": "Пожалуйста, введите вашу фамилию:",
-      "user_created": "Регистрация прошла успешна!",
-      "teacher_tools": "Что ты можешь сделать:\n\n1. Создать группу, задав её название.\n2. Добавить ученика в группу по его никнейму в телеграмме.\n3. Удалить ученика из группы.\n4. Просмотреть все группы.\n5. Просмотреть всех учеников.\n\nВыберите действие:",
-      "error": "Произошла ошибка. Попробуйте еще раз.",
-      "no_username": "Для использования бота необходимо установить username в настройках Telegram. Пожалуйста, установите username и попробуйте снова.",
-      "invalid_name": "Пожалуйста, введите только буквы, пробелы и дефисы для имени.",
-      "invalid_surname": "Пожалуйста, введите только буквы, пробелы и дефисы для фамилии."
-    },
-    "en": {
-      "enter_name": "Please enter your first name:",
-      "enter_surname": "Please enter your last name:",
-      "user_created": "Registration completed successfully!",
-      "teacher_tools": "What you can do:\n\n1. Create a group by specifying its name.\n2. Add a student to a group by their Telegram username.\n3. Remove a student from a group.\n4. View all groups.\n5. View all students.\n\nChoose an action:",
-      "error": "An error occurred. Please try again.",
-      "no_username": "To use the bot, you need to set a username in Telegram settings. Please set a username and try again.",
-      "invalid_name": "Please enter only letters, spaces, and hyphens for your name.",
-      "invalid_surname": "Please enter only letters, spaces, and hyphens for your surname."
-    },
-    "es": {
-      "enter_name": "Por favor, introduce tu nombre:",
-      "enter_surname": "Por favor, introduce tu apellido:",
-      "user_created": "¡Registro completado con éxito!",
-      "teacher_tools": "Lo que puedes hacer:\n\n1. Crear un grupo especificando su nombre.\n2. Agregar un estudiante a un grupo por su nombre de usuario de Telegram.\n3. Eliminar un estudiante de un grupo.\n4. Ver todos los grupos.\n5. Ver todos los estudiantes.\n\nElige una acción:",
-      "error": "Ocurrió un error. Por favor, inténtalo de nuevo.",
-      "no_username": "Para usar el bot, necesitas establecer un nombre de usuario en la configuración de Telegram. Por favor, establece un nombre de usuario e intenta de nuevo.",
-      "invalid_name": "Por favor, introduce solo letras, espacios y guiones para tu nombre.",
-      "invalid_surname": "Por favor, introduce solo letras, espacios y guiones para tu apellido."
-    }
+    "CHOOSING_ROLE": 1
   },
   "messages": {
-    "welcome": "🇷🇺 Добро пожаловать! Пожалуйста, выберите язык общения:\n\n🇺🇸 Welcome! Please choose your communication language:\n\n🇪🇸 ¡Bienvenido! Por favor, elige tu idioma de comunicación:",
-    "error_occurred": "An error occurred. Please start over with /start",
-    "registration_cancelled": "Registration cancelled. Use /start to begin.",
-    "user_exists": "User already exists in the system.",
-    "block_text_selection": "Please select a language using the buttons above. Text input is not allowed at this stage."
+    "welcome": "Добро пожаловать! Пожалуйста, выберите вашу роль:",
+    "choose_role": "Выберите вашу роль:",
+    "teacher_instruction": "Введите команду: /teach ваш_никнейм, например /teach josy",
+    "student_instruction": "Введите команду: /learn",
+    "invalid_nickname": "Никнейм должен содержать только буквы, без пробелов, цифр и специальных символов.",
+    "error_occurred": "Произошла ошибка. Пожалуйста, начните заново с /start",
+    "registration_cancelled": "Регистрация отменена. Используйте /start для начала.",
+    "user_exists": "Пользователь уже существует в системе.",
+    "block_text_selection": "Пожалуйста, выберите роль с помощью кнопок выше. Ввод текста на этом этапе не разрешен.",
+    "no_username": "Для использования бота необходимо установить username в настройках Telegram. Пожалуйста, установите username и попробуйте снова.",
+    "hello_student": "Привет, {username}! 🤝",
+    "something_wrong": "Хм, что-то пошло не так. Обратитесь в поддержку.",
+    "username_incorrect": "Хм, правильный ли ваш никнейм? 🤔",
+    "username_already_exists": "Хм, у вас уже есть никнейм '{username}'. Пожалуйста, используйте его.",
+    "teacher_success": "☑️",
+    "forgot_username": "Забыли указать ваш никнейм? 🤔",
+    "not_registered": "Хм, вы еще не зарегистрированы? 🔒",
+    "message_error": "Извините, произошла ошибка при обработке вашего сообщения.",
+    "token_invalid": "Переданный токен недействителен, пожалуйста, проверьте, что он правильный",
+    "no_parameters": "Параметры не переданы в команду, однако ожидался один"
   },
-  "language_buttons": {
-    "ru": "🇷🇺 Русский",
-    "en": "🇺🇸 English", 
-    "es": "🇪🇸 Español"
+  "role_buttons": {
+    "teacher": "👨‍🏫 Учитель",
+    "student": "👨‍🎓 Ученик"
   }
 } 

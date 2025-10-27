@@ -22,12 +22,9 @@ from telegram.ext import (
 
 # Import constants from JSON file
 from constants import (
-    CHOOSING_LANGUAGE,
-    ENTERING_NAME,
-    ENTERING_SURNAME,
-    LANGUAGES,
+    CHOOSING_ROLE,
     MESSAGES,
-    LANGUAGE_BUTTONS,
+    ROLE_BUTTONS,
 )
 
 # Teacher Telegram ID (imported from envs)
@@ -42,127 +39,48 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def get_language_keyboard():
-    """Creates keyboard for language selection"""
+def get_role_keyboard():
+    """Creates keyboard for role selection"""
     keyboard = [
         [
-            InlineKeyboardButton(LANGUAGE_BUTTONS["ru"], callback_data="lang_ru"),
-            InlineKeyboardButton(LANGUAGE_BUTTONS["en"], callback_data="lang_en"),
-            InlineKeyboardButton(LANGUAGE_BUTTONS["es"], callback_data="lang_es"),
+            InlineKeyboardButton(ROLE_BUTTONS["teacher"], callback_data="role_teacher"),
+        ],
+        [
+            InlineKeyboardButton(ROLE_BUTTONS["student"], callback_data="role_student"),
         ]
     ]
     return InlineKeyboardMarkup(keyboard)
 
 
-async def language_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Language selection handler"""
+async def role_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Role selection handler"""
     query = update.callback_query
     await query.answer()
 
     user_id = update.effective_user.id
-    language = query.data.split("_")[1]  # lang_ru -> ru
+    role = query.data.split("_")[1]  # role_teacher -> teacher, role_student -> student
 
-    # Save selected language
+    # Save selected role
     if user_id not in user_states:
         user_states[user_id] = {}
-    user_states[user_id]["language"] = language
+    user_states[user_id]["role"] = role
 
-    if user_id == TEACHER_TELEGRAM_ID:
-        # For teacher show available tools
-        await query.edit_message_text(LANGUAGES[language]["teacher_tools"])
+    if role == "teacher":
+        # For teacher, ask for username and show instruction
+        await query.edit_message_text(MESSAGES["teacher_instruction"])
         return ConversationHandler.END
     else:
-        # For student ask for name
-        await query.answer()  # Answer the callback query
-        await query.message.reply_text(LANGUAGES[language]["enter_name"])
-        return ENTERING_NAME
-
-
-async def handle_name_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Name input handler"""
-    user_id = update.effective_user.id
-    first_name = update.message.text
-
-    if user_id not in user_states:
-        await update.message.reply_text(MESSAGES["error_occurred"])
+        # For student, show instruction
+        await query.edit_message_text(MESSAGES["student_instruction"])
         return ConversationHandler.END
 
-    # Validate input - only allow letters, spaces, and hyphens
-    if not first_name.replace(" ", "").replace("-", "").isalpha():
-        language = user_states[user_id]["language"]
-        await update.message.reply_text(LANGUAGES[language]["invalid_name"])
-        return ENTERING_NAME
 
-    user_states[user_id]["first_name"] = first_name
-    language = user_states[user_id]["language"]
-
-    await update.message.reply_text(LANGUAGES[language]["enter_surname"])
-    return ENTERING_SURNAME
-
-
-async def handle_surname_input(
+async def block_text_during_role_selection(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> int:
-    """Surname input handler"""
-    user_id = update.effective_user.id
-    last_name = update.message.text
-
-    if user_id not in user_states:
-        await update.message.reply_text(MESSAGES["error_occurred"])
-        return ConversationHandler.END
-
-    # Validate input - only allow letters, spaces, and hyphens
-    if not last_name.replace(" ", "").replace("-", "").isalpha():
-        language = user_states[user_id]["language"]
-        await update.message.reply_text(LANGUAGES[language]["invalid_surname"])
-        return ENTERING_SURNAME
-
-    user_states[user_id]["last_name"] = last_name
-    language = user_states[user_id]["language"]
-
-    # Get username from Telegram
-    username = update.effective_user.username
-
-    try:
-        # Create user via FastMCP Client
-        client = Client(f"{envs.USERS_GROUPS_MCP_ENDPOINT}/mcp")
-
-        async with client:
-            result = await client.call_tool(
-                "create_user",
-                {
-                    "telegram_id": user_id,
-                    "username": username,
-                    "first_name": user_states[user_id]["first_name"],
-                    "last_name": user_states[user_id]["last_name"],
-                },
-            )
-
-            if "already exists" in result.data:
-                # User already exists
-                await update.message.reply_text(MESSAGES["user_exists"])
-                logger.info(f"User {user_id} already exists in database")
-            else:
-                await update.message.reply_text(LANGUAGES[language]["user_created"])
-                logger.info(f"User {user_id} created successfully via FastMCP Client")
-
-    except Exception as e:
-        logger.error(f"Error creating user {user_id}: {e}")
-        await update.message.reply_text(LANGUAGES[language]["error"])
-
-    # Clear user state
-    if user_id in user_states:
-        del user_states[user_id]
-
-    return ConversationHandler.END
-
-
-async def block_text_during_language_selection(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> int:
-    """Block text input during language selection"""
+    """Block text input during role selection"""
     await update.message.reply_text(MESSAGES["block_text_selection"])
-    return CHOOSING_LANGUAGE
+    return CHOOSING_ROLE
 
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -185,14 +103,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     # Check if username exists (required field)
     if not username:
-        await update.message.reply_text(LANGUAGES["en"]["no_username"])
+        await update.message.reply_text(MESSAGES["no_username"])
         return
 
     await update.message.reply_text(
-        MESSAGES["welcome"], reply_markup=get_language_keyboard()
+        MESSAGES["welcome"], reply_markup=get_role_keyboard()
     )
 
-    return CHOOSING_LANGUAGE
+    return CHOOSING_ROLE
 
 
 async def learn_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -219,7 +137,7 @@ async def learn_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             logger.info(f"Username for the user_id '{student_user_id}': '{username}'")
             if username:
                 # already have username, no need to generate
-                await update.message.reply_text(f"Hello, {username}! 🤝")
+                await update.message.reply_text(MESSAGES["hello_student"].format(username=username))
                 return
             else:
                 response = await client.post(
@@ -244,25 +162,19 @@ async def learn_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
                         logger.error(
                             f"Error registering user '{student_user_id}' as a student: {response.status_code} {response.text}"
                         )
-                        await update.message.reply_text(
-                            "Hmm, something went wrong. Contact support."
-                        )
+                        await update.message.reply_text(MESSAGES["something_wrong"])
                         return
 
                     await update.message.reply_text(username)
                     return
                 else:
-                    await update.message.reply_text(
-                        "Hmm, something went wrong. Contact support."
-                    )
+                    await update.message.reply_text(MESSAGES["something_wrong"])
                     return
         else:
             logger.error(
                 f"Error creating student account: {response.status_code} {response.text}"
             )
-            await update.message.reply_text(
-                "Hmm, something went wrong. Contact support."
-            )
+            await update.message.reply_text(MESSAGES["something_wrong"])
             return
 
 
@@ -290,17 +202,13 @@ async def teach_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
                 response_data = response.json()
                 logger.info(f"Response data: {response_data}")
                 if not response_data["exists"]:
-                    await update.message.reply_text(
-                        "Hm, is your username is correct? 🤔"
-                    )
+                    await update.message.reply_text(MESSAGES["username_incorrect"])
                     return
             else:
                 logger.error(
                     f"Error checking username '{given_username}': {response.status_code} {response.text}"
                 )
-                await update.message.reply_text(
-                    "Hmm, something went wrong. Contact support."
-                )
+                await update.message.reply_text(MESSAGES["something_wrong"])
                 return
 
             # Check if user_id has another username
@@ -319,9 +227,7 @@ async def teach_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
                 )
 
                 if username and username != given_username:
-                    await update.message.reply_text(
-                        f"Hm, you already have a username '{username}'. Please use it."
-                    )
+                    await update.message.reply_text(MESSAGES["username_already_exists"].format(username=username))
                     return
 
             # Get user_id for the username
@@ -348,9 +254,7 @@ async def teach_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
                             f"teach_user_id={teacher_user_id}, user_id={user_id}"
                         )
 
-                        await update.message.reply_text(
-                            "Hm, is your username is correct? 🤔"
-                        )
+                        await update.message.reply_text(MESSAGES["username_incorrect"])
                         return
 
                     # TODO: check that this user_id has the "teacher" role
@@ -358,9 +262,7 @@ async def teach_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
                 logger.error(
                     f"Error getting user_id for the username '{given_username}': {response.status_code} {response.text}"
                 )
-                await update.message.reply_text(
-                    "Hmm, something went wrong. Contact support."
-                )
+                await update.message.reply_text(MESSAGES["something_wrong"])
                 return
 
             # Register new teacher into groups-users service
@@ -375,9 +277,7 @@ async def teach_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
                     logger.error(
                         f"Error setting user_id for the username '{given_username}': {response.status_code} {response.text}"
                     )
-                    await update.message.reply_text(
-                        "Hmm, something went wrong. Contact support."
-                    )
+                    await update.message.reply_text(MESSAGES["something_wrong"])
                     return
 
                 # register new user into the MCP registry to allow to use tools
@@ -392,14 +292,12 @@ async def teach_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
                     logger.error(
                         f"Error registering user into the MCP registry: {response.status_code} {response.text}"
                     )
-                    await update.message.reply_text(
-                        "Hmm, something went wrong. Contact support."
-                    )
+                    await update.message.reply_text(MESSAGES["something_wrong"])
                     return
 
-            await update.message.reply_text("☑️")
+            await update.message.reply_text(MESSAGES["teacher_success"])
     else:
-        await update.message.reply_text("Forgot to provide your username? 🤔")
+        await update.message.reply_text(MESSAGES["forgot_username"])
         return
 
 
@@ -422,9 +320,7 @@ async def token_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 logger.warning(
                     f"user='{user_id}' passed token='{passed_token}', and I can not find active token in storage"
                 )
-                await update.message.reply_text(
-                    "Passed token is not valid, please check that it is correct"
-                )
+                await update.message.reply_text(MESSAGES["token_invalid"])
                 return
 
             if not token.user:
@@ -452,15 +348,11 @@ async def token_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                     logger.warning(
                         f"Command executed by '{user_id}', however token belongs to '{token.user_id}'"
                     )
-                    await update.message.reply_text(
-                        "Passed token is not valid, please check that it is correct"
-                    )
+                    await update.message.reply_text(MESSAGES["token_invalid"])
                     return
     else:
         logger.warning(f"No parameters passed to the token command by user='{user_id}'")
-        await update.message.reply_text(
-            "No parameters passed to the command, however expected one"
-        )
+        await update.message.reply_text(MESSAGES["no_parameters"])
 
 
 async def check_user_is_authenticated(user_id: str) -> bool:
@@ -492,7 +384,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     is_authenticated = await check_user_is_authenticated(user_id)
     if not is_authenticated:
-        await update.message.reply_text("Hmmm, are you not registered yet? 🔒")
+        await update.message.reply_text(MESSAGES["not_registered"])
         return
 
     try:
@@ -510,16 +402,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 await update.message.reply_text(response_data["message"])
             else:
                 logger.error(f"Worker error: {response.status_code} {response.text}")
-                await update.message.reply_text(
-                    "Sorry, there was an error processing your message."
-                )
+                await update.message.reply_text(MESSAGES["message_error"])
                 return
     except Exception as e:
         logger.error(f"Error processing message: {e}")
         import traceback
 
         traceback.print_exc()
-        error_message = "Sorry, there was an error processing your message."
+        error_message = MESSAGES["message_error"]
         await update.message.reply_text(error_message)
 
 
@@ -541,19 +431,13 @@ def run_bot():
             CommandHandler("learn", learn_command),
         ],
         states={
-            CHOOSING_LANGUAGE: [
-                CallbackQueryHandler(language_callback, pattern="^lang_"),
-                # Block all text messages during language selection
+            CHOOSING_ROLE: [
+                CallbackQueryHandler(role_callback, pattern="^role_"),
+                # Block all text messages during role selection
                 MessageHandler(
                     filters.TEXT & ~filters.COMMAND,
-                    block_text_during_language_selection,
+                    block_text_during_role_selection,
                 ),
-            ],
-            ENTERING_NAME: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_name_input)
-            ],
-            ENTERING_SURNAME: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_surname_input)
             ],
         },
         fallbacks=[CommandHandler("cancel", cancel)],
