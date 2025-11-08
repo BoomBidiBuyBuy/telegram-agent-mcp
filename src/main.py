@@ -295,7 +295,7 @@ async def teach_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
                     await update.message.reply_text(MESSAGES["something_wrong"])
                     return
 
-            await update.message.reply_text(MESSAGES["teacher_success"])
+            await update.message.reply_text(MESSAGES["teacher_actions"])
     else:
         await update.message.reply_text(MESSAGES["forgot_username"])
         return
