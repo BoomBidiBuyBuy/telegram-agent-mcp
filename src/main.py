@@ -165,7 +165,7 @@ async def learn_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
                         await update.message.reply_text(MESSAGES["something_wrong"])
                         return
 
-                    await update.message.reply_text(username)
+                    await update.message.reply_text(f'{MESSAGES["your_username"]} {username}.\n\n{MESSAGES["student_actions"]}')
                     return
                 else:
                     await update.message.reply_text(MESSAGES["something_wrong"])
